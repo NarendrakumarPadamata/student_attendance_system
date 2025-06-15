@@ -20,12 +20,13 @@ A web-based attendance management system designed for teachers to mark daily att
 
 ## 👨‍👩‍👦‍👦 Team Members
 
-- Naravula Prudhvi Sri Bhanu Vivek  
-- [Add Teammate 2 Name]  
-- [Add Teammate 3 Name]  
-- [Add Teammate 4 Name] *(optional)*  
+- Naravula Prudhvi Sri Bhanu Vivek
+- Padamata Narendra kumar 
+- Vajrapu Devendra rakesh 
+- Naidu Jaswanth
+- Shaik Adhik
 
-> 📌 *Project developed as part of our academic curriculum at [Your College/University Name].*
+> 📌 *Project developed as part of our academic curriculum at Tech Yuva Institute.*
 
 ## 📸 Screenshots
 
