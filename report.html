@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Attendance</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT"
+    crossorigin="anonymous"
+  />
+  <style>
+    body {
+      background-color: #f6f6f6;
+      font-family: 'Playfair Display', serif;
+      margin: 0;
+    }
+    header {
+      background-color: #023246;
+      color: #f6f6f6;
+      padding: 12px 0;
+      text-align: center;
+      font-size: 24px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #dee2e6;
+      padding: 8px 16px;
+      font-size: 16px;
+      color: #333;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .top-bar > div {
+      margin: 4px 0;
+    }
+    #date-time {
+      font-weight: bold;
+      color: #555;
+    }
+    footer {
+      background-color: #023246;
+      color: #f6f6f6;
+      text-align: center;
+      padding: 12px 0;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>Smart Attendance System</header>
+
+  <div class="top-bar">
+    <div>
+      <strong>Teacher:</strong> <span id="username"></span> |
+      <strong>Class ID:</strong> <span id="class-id"></span>
+    </div>
+    <div id="date-time" class="text-end"></div>
+  </div>
+
+  <div class="container mt-4">
+    <div class="row mb-3 text-center">
+      <div class="col-md-6">
+        <div class="alert alert-success" id="todayStrength"></div>
+      </div>
+      <div class="col-md-6">
+        <div class="alert alert-info" id="prevDayStrength"></div>
+      </div>
+    </div>
+
+    <h4 class="text-center mb-4">Class Attendance Analytics</h4>
+    <div class="row g-4">
+      <div class="col-lg-6 col-md-12">
+        <div class="card shadow-sm p-3 border-0 bg-light">
+          <h5 class="text-center">Overall Attendance</h5>
+          <canvas id="attendanceDoughnutChart" style="max-height: 250px;"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-6 col-md-12">
+        <div class="card shadow-sm p-3 border-0 bg-light">
+          <h5 class="text-center">Daily Trend</h5>
+          <canvas id="dailyLineChart" style="max-height: 250px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="text-center mt-5 mb-4">Attendance Report</h3>
+    <div class="row mb-3">
+      <div class="col-md-4 offset-md-4">
+        <input type="date" id="dateFilter" class="form-control" />
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover align-middle bg-white">
+        <thead class="table-primary text-center">
+          <tr>
+            <th>Date</th>
+            <th>Student Name</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="attendanceReportTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Smart Attendance System. All rights reserved.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Sample Attendance Data
+    const attendanceRecords = [
+      { date: "2025-06-16", name: "Alice", status: "Present" },
+      { date: "2025-06-16", name: "Bob", status: "Absent" },
+      { date: "2025-06-17", name: "Alice", status: "Present" },
+      { date: "2025-06-17", name: "Bob", status: "Present" },
+      { date: "2025-06-18", name: "Alice", status: "Absent" },
+      { date: "2025-06-18", name: "Bob", status: "Present" }
+    ];
+
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById("date-time").textContent = 
+        `${now.toLocaleDateString()} | ${now.toLocaleTimeString()}`;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    function renderAttendanceReport(filterDate = "") {
+      const tbody = document.getElementById("attendanceReportTable");
+      tbody.innerHTML = "";
+      attendanceRecords
+        .filter(record => !filterDate || record.date === filterDate)
+        .forEach(record => {
+          const row = document.createElement("tr");
+          row.classList.add("text-center");
+          row.innerHTML = `
+            <td>${record.date}</td>
+            <td>${record.name}</td>
+            <td>${record.status}</td>
+          `;
+          tbody.appendChild(row);
+        });
+    }
+
+    document.getElementById("dateFilter").addEventListener("change", function () {
+      renderAttendanceReport(this.value);
+    });
+
+    function getMostRecentDate() {
+      const dates = [...new Set(attendanceRecords.map(r => r.date))];
+      return dates.sort().reverse()[0] || "";
+    }
+
+    function getOverallSummary() {
+      let present = 0, absent = 0;
+      attendanceRecords.forEach(r => r.status === "Present" ? present++ : absent++);
+      return { present, absent };
+    }
+
+    function renderAttendanceDoughnutChart() {
+      const overall = getOverallSummary();
+      const ctx = document.getElementById("attendanceDoughnutChart").getContext("2d");
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Present', 'Absent'],
+          datasets: [{
+            data: [overall.present, overall.absent],
+            backgroundColor: ['rgba(54, 162, 235, 0.85)', 'rgba(255, 99, 132, 0.85)'],
+            borderWidth: 2,
+            borderColor: '#fff',
+            hoverOffset: 12
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { font: { size: 16 }, color: '#333' }
+            },
+            title: {
+              display: true,
+              text: 'Overall Attendance Distribution',
+              font: { size: 20 }
+            },
+            datalabels: {
+              color: '#fff',
+              font: { weight: 'bold', size: 13 },
+              formatter: (value, context) => {
+                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                return `${((value / total) * 100).toFixed(1)}%`;
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const value = ctx.parsed;
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  return `${ctx.label}: ${value} (${((value / total) * 100).toFixed(1)}%)`;
+                }
+              }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+
+    function groupByDate(records) {
+      const grouped = {};
+      records.forEach(r => {
+        if (!grouped[r.date]) grouped[r.date] = { Present: 0, Absent: 0 };
+        grouped[r.date][r.status]++;
+      });
+      return grouped;
+    }
+
+    function renderDailyLineChart() {
+      const grouped = groupByDate(attendanceRecords);
+      const dates = Object.keys(grouped).sort();
+      const presentCounts = dates.map(date => grouped[date].Present);
+      const absentCounts = dates.map(date => grouped[date].Absent);
+
+      new Chart(document.getElementById('dailyLineChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [
+            {
+              label: 'Present',
+              data: presentCounts,
+              borderColor: 'rgba(54, 162, 235, 1)',
+              backgroundColor: 'rgba(54, 162, 235, 0.2)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4
+            },
+            {
+              label: 'Absent',
+              data: absentCounts,
+              borderColor: 'rgba(255, 99, 132, 1)',
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { font: { size: 14 }, color: '#333' }
+            },
+            title: {
+              display: true,
+              text: 'Attendance Over Time',
+              font: { size: 18 }
+            }
+          },
+          interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+    }
+
+    function getTodayDate() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function getPrevDate() {
+      const prev = new Date();
+      prev.setDate(prev.getDate() - 1);
+      return prev.toISOString().slice(0, 10);
+    }
+
+    function getStrength(date) {
+      return attendanceRecords.filter(r => r.date === date && r.status === "Present").length;
+    }
+
+    function updateStrengthDisplays() {
+      document.getElementById("todayStrength").textContent =
+        `Today's Strength (${getTodayDate()}): ${getStrength(getTodayDate())}`;
+      document.getElementById("prevDayStrength").textContent =
+        `Previous Day's Strength (${getPrevDate()}): ${getStrength(getPrevDate())}`;
+    }
+
+    // Fetch teacher & class info from backend
+    fetch('/api/getClassInfo') // Replace with actual API
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('username').textContent = data.teacher;
+        document.getElementById('class-id').textContent = data.classId;
+      });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const recentDate = getMostRecentDate();
+      if (recentDate) {
+        document.getElementById("dateFilter").value = recentDate;
+        renderAttendanceReport(recentDate);
+      } else {
+        renderAttendanceReport();
+      }
+      updateStrengthDisplays();
+      renderAttendanceDoughnutChart();
+      renderDailyLineChart();
+    });
+  </script>
+</body>
+</html>
