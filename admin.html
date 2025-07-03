@@ -42,6 +42,9 @@
       background-color: #03506f;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 </head>
 <body>
   <header>Admin Dashboard – Smart Attendance System</header>
@@ -267,45 +270,55 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // --- Data Storage ---
-    let classes = [
-      { id: "C101", name: "ECE 2A", students: 25, avgAttendance: 86.4 },
-      { id: "C102", name: "EEE 1B", students: 22, avgAttendance: 78.2 },
-      { id: "C103", name: "CSE 3C", students: 30, avgAttendance: 91.0 }
-    ];
-    let students = [
-      { id: "S01", name: "Akhil", classId: "C101", contact: "9876543210", gender: "Male" },
-      { id: "S02", name: "Bhanu", classId: "C102", contact: "9012345678", gender: "Male" },
-      { id: "S03", name: "Charan", classId: "C101", contact: "9988776655", gender: "Male" },
-      { id: "S04", name: "Divya", classId: "C103", contact: "8765432109", gender: "Female" }
-    ];
-    let teachers = [
-      { id: "T01", name: "Ravi", contact: "9876543211", subject: "Math", password: "pass123" },
-      { id: "T02", name: "Priya", contact: "9876543212", subject: "Science", password: "pass456" }
-    ];
-    let holidays = [
-      { date: "2025-01-01", reason: "New Year" },
-      { date: "2025-01-26", reason: "Republic Day" }
-    ];
-    const logs = [
-      { date: "2025-06-30", type: "Attendance", message: "Vivek marked attendance for C101" },
-      { date: "2025-06-29", type: "Holiday", message: "Holiday added: Independence Day" },
-      { date: "2025-06-28", type: "Student", message: "Student added to C102" },
-      { date: "2025-06-30", type: "Student", message: "Student removed from C101" },
-      { date: "2025-06-27", type: "Teacher", message: "Teacher T03 added" },
-      { date: "2025-06-27", type: "Class", message: "Class C104 created" }
-    ];
-    // --- DOM Elements ---
-    const classSummaryContainer = document.getElementById("classSummaryContainer");
-    const classList = document.getElementById("classList");
-    const holidayList = document.getElementById("holidayList");
-    const studentTableBody = document.getElementById("studentTableBody");
-    const teacherTableBody = document.getElementById("teacherTableBody");
-    const logsList = document.getElementById("logsList");
-    // --- Initial Render ---
-    renderClasses();
-    renderHolidays();
-    // --- Helper Functions ---
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWo8f4M2sWUkMjJ2RQ7wqF4S82xvFRpYI",
+      authDomain: "smart-attendance-system-41dc9.firebaseapp.com",
+      databaseURL: "https://smart-attendance-system-41dc9-default-rtdb.firebaseio.com",
+      projectId: "smart-attendance-system-41dc9",
+      storageBucket: "smart-attendance-system-41dc9.firebasestorage.app",
+      messagingSenderId: "362565596461",
+      appId: "1:362565596461:web:c2733802169d8c23468fa4",
+      measurementId: "G-PGR5EJQ608"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const analytics = firebase.analytics();
+
+    let classes = [], students = [], teachers = [], holidays = [], logs = [];
+
+    function loadAllData() {
+      db.ref('classes').once('value').then(snapshot => {
+        classes = [];
+        snapshot.forEach(child => classes.push(child.val()));
+        renderClasses();
+        populateStudentClassFilter();
+        populateNewStudentClassDropdown();
+        populateLogClassFilter();
+      });
+      db.ref('students').once('value').then(snapshot => {
+        students = [];
+        snapshot.forEach(child => students.push(child.val()));
+        renderStudentTable();
+      });
+      db.ref('teachers').once('value').then(snapshot => {
+        teachers = [];
+        snapshot.forEach(child => teachers.push(child.val()));
+        renderTeacherTable();
+      });
+      db.ref('holidays').once('value').then(snapshot => {
+        holidays = [];
+        snapshot.forEach(child => holidays.push(child.val()));
+        renderHolidays();
+      });
+      db.ref('logs').once('value').then(snapshot => {
+        logs = [];
+        snapshot.forEach(child => logs.push(child.val()));
+        renderLogs();
+      });
+    }
+    loadAllData();
+
     function showConfirm(msg, onConfirm) {
       document.getElementById("confirmModalMsg").textContent = msg;
       const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
@@ -338,7 +351,6 @@
         select.innerHTML += `<option value="${cls.id}">${cls.id}</option>`;
       });
     }
-    // --- Class Management ---
     function renderClasses() {
       classSummaryContainer.innerHTML = "";
       classList.innerHTML = "";
@@ -387,12 +399,10 @@
         return;
       }
       showConfirm(`Add new class "${classId} - ${className}"?`, function() {
-        classes.push({ id: classId, name: className, students: 0, avgAttendance: 0 });
-        logs.push({
-          date: new Date().toISOString().slice(0, 10),
-          type: "Class",
-          message: `Class ${classId} (${className}) added`
-        });
+        const newClass = { id: classId, name: className, students: 0, avgAttendance: 0 };
+        classes.push(newClass);
+        db.ref('classes/' + classId).set(newClass);
+        addLog("Class", `Class ${classId} (${className}) added`);
         newClassInput.value = "";
         newClassNameInput.value = "";
         renderClasses();
@@ -407,18 +417,14 @@
         return;
       }
       showConfirm(`Delete class "${classToDelete.id}"? This action cannot be undone.`, function() {
-        logs.push({
-          date: new Date().toISOString().slice(0, 10),
-          type: "Class",
-          message: `Class ${classToDelete.id} (${classToDelete.name}) deleted`
-        });
+        db.ref('classes/' + classToDelete.id).remove();
+        addLog("Class", `Class ${classToDelete.id} (${classToDelete.name}) deleted`);
         classes.splice(index, 1);
         renderClasses();
         populateStudentClassFilter();
         populateNewStudentClassDropdown();
       });
     }
-    // --- Holiday Management ---
     function renderHolidays() {
       holidayList.innerHTML = "";
       holidays.forEach((h, index) => {
@@ -445,7 +451,10 @@
         return;
       }
       showConfirm(`Add holiday on ${dateVal} for "${reasonVal}"?`, function() {
-        holidays.push({ date: dateVal, reason: reasonVal });
+        const newHoliday = { date: dateVal, reason: reasonVal };
+        holidays.push(newHoliday);
+        db.ref('holidays/' + dateVal).set(newHoliday);
+        addLog("Holiday", `Holiday added: ${reasonVal} (${dateVal})`);
         dateInput.value = "";
         reasonInput.value = "";
         renderHolidays();
@@ -454,11 +463,12 @@
     function deleteHoliday(index) {
       const holidayToDelete = holidays[index];
       showConfirm(`Delete holiday on ${holidayToDelete.date} (${holidayToDelete.reason})?`, function() {
+        db.ref('holidays/' + holidayToDelete.date).remove();
+        addLog("Holiday", `Holiday deleted: ${holidayToDelete.reason} (${holidayToDelete.date})`);
         holidays.splice(index, 1);
         renderHolidays();
       });
     }
-    // --- Student Management ---
     let editingStudentIndex = null;
     function renderStudentTable() {
       studentTableBody.innerHTML = "";
@@ -545,11 +555,8 @@
           contact: newContact,
           gender: newGender
         };
-        logs.push({
-          date: new Date().toISOString().slice(0, 10),
-          type: "Student",
-          message: `Student ${currentStudent.id} edited`
-        });
+        db.ref('students/' + newId).set(students[index]);
+        addLog("Student", `Student ${currentStudent.id} edited`);
         editingStudentIndex = null;
         renderStudentTable();
       });
@@ -577,18 +584,16 @@
         return;
       }
       showConfirm(`Add new student "${studentName}" (ID: ${studentId}) to class ${studentClass}?`, function() {
-        students.push({
+        const newStudent = {
           id: studentId,
           name: studentName,
           classId: studentClass,
           contact: studentContact,
           gender: studentGender
-        });
-        logs.push({
-          date: new Date().toISOString().slice(0, 10),
-          type: "Student",
-          message: `Student ${studentId} (${studentName}) added to ${studentClass}`
-        });
+        };
+        students.push(newStudent);
+        db.ref('students/' + studentId).set(newStudent);
+        addLog("Student", `Student ${studentId} (${studentName}) added to ${studentClass}`);
         document.getElementById("newStudentID").value = "";
         document.getElementById("newStudentName").value = "";
         document.getElementById("newStudentClass").value = "";
@@ -600,16 +605,12 @@
     function deleteStudent(index) {
       const studentToDelete = students[index];
       showConfirm(`Delete student "${studentToDelete.name}" (ID: ${studentToDelete.id}) from class ${studentToDelete.classId}? This action cannot be undone.`, function() {
-        logs.push({
-          date: new Date().toISOString().slice(0, 10),
-          type: "Student",
-          message: `Student ${studentToDelete.id} (${studentToDelete.name}) deleted from ${studentToDelete.classId}`
-        });
+        db.ref('students/' + studentToDelete.id).remove();
+        addLog("Student", `Student ${studentToDelete.id} (${studentToDelete.name}) deleted from ${studentToDelete.classId}`);
         students.splice(index, 1);
         renderStudentTable();
       });
     }
-    // --- Teacher Management ---
     let editingTeacherIndex = null;
     function renderTeacherTable() {
       teacherTableBody.innerHTML = "";
@@ -664,7 +665,10 @@
         return;
       }
       showConfirm(`Add teacher "${teacherName}" (ID: ${teacherId})?`, function() {
-        teachers.push({ id: teacherId, name: teacherName, contact: teacherContact, subject: teacherSubject, password: teacherPassword });
+        const newTeacher = { id: teacherId, name: teacherName, contact: teacherContact, subject: teacherSubject, password: teacherPassword };
+        teachers.push(newTeacher);
+        db.ref('teachers/' + teacherId).set(newTeacher);
+        addLog("Teacher", `Teacher ${teacherId} (${teacherName}) added`);
         document.getElementById("newTeacherID").value = "";
         document.getElementById("newTeacherName").value = "";
         document.getElementById("newTeacherContact").value = "";
@@ -700,6 +704,8 @@
           subject: newSubject,
           password: newPassword
         };
+        db.ref('teachers/' + newId).set(teachers[index]);
+        addLog("Teacher", `Teacher ${currentTeacher.id} edited`);
         editingTeacherIndex = null;
         renderTeacherTable();
       });
@@ -711,11 +717,12 @@
     function deleteTeacher(index) {
       const teacherToDelete = teachers[index];
       showConfirm(`Delete teacher "${teacherToDelete.name}" (ID: ${teacherToDelete.id})? This action cannot be undone.`, function() {
+        db.ref('teachers/' + teacherToDelete.id).remove();
+        addLog("Teacher", `Teacher ${teacherToDelete.id} (${teacherToDelete.name}) deleted`);
         teachers.splice(index, 1);
         renderTeacherTable();
       });
     }
-    // --- Logs Management ---
     function renderLogs() {
       logsList.innerHTML = "";
       const filterDate = document.getElementById("logFilterDate").value;
@@ -741,7 +748,16 @@
         logsList.innerHTML += `<li class="list-group-item"><span class="badge bg-info me-2">${log.type}</span> [${log.date}] ${log.message}</li>`;
       });
     }
-    // --- Event Listeners ---
+    function addLog(type, message) {
+      const log = {
+        date: new Date().toISOString().slice(0, 10),
+        type,
+        message
+      };
+      logs.push(log);
+      db.ref('logs').push(log);
+      renderLogs();
+    }
     document.getElementById("studentsModal").addEventListener("show.bs.modal", function() {
       populateStudentClassFilter();
       populateNewStudentClassDropdown();
@@ -757,28 +773,5 @@
     document.getElementById("logTypeFilter").addEventListener("change", renderLogs);
     document.getElementById("logClassFilter").addEventListener("change", renderLogs);
   </script>
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBiMw2jFky9giT5QaTgdnaHEmJDZMzxkXY",
-    authDomain: "student-attendance-syste-bf611.firebaseapp.com",
-    projectId: "student-attendance-syste-bf611",
-    storageBucket: "student-attendance-syste-bf611.firebasestorage.app",
-    messagingSenderId: "158541624825",
-    appId: "1:158541624825:web:f3189d8a7a43c4eae57928",
-    measurementId: "G-KD9DKSYBK3"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </body>
-</html>
+</html> 
