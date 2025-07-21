@@ -4,54 +4,44 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Attendance</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-    integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT"
-    crossorigin="anonymous"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
   <style>
     body {
-      background-color: #f6f6f6;
-      font-family: 'Playfair Display', serif;
-      margin: 0;
+      background-color:#f6f6f6;
+      font-family:'PlayfairDisplay',serif;
+      margin:0;
     }
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background-color: #dee2e6;
-      padding: 8px 16px;
-      font-size: 16px;
-      color: #333;
-      flex-wrap: wrap;
+    .top-bar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background-color:#dee2e6;
+      padding:8px 16px;
+      font-size:16px;
+      color:#333;
+      flex-wrap:wrap;
     }
-    .top-bar > div {
-      margin: 4px 0;
+    .top-bar>div{
+      margin:4px 0;
     }
-    header {
-      background-color: #023246;
-      color: #f6f6f6;
-      padding: 12px 0;
-      text-align: center;
-      font-size: 24px;
+    header{
+      background-color:#023246;
+      color:#f6f6f6;
+      padding:12px 0;
+      text-align:center;
+      font-size:24px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.1);
     }
-    header, .top-bar {
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    #date-time {
-      font-weight: bold;
-      color: #555;
+    #date-time{
+      font-weight:bold;
+      color:#555;
     }
   </style>
 </head>
 
 <body>
-
-  <header>
-    Smart Attendance System
-  </header>
-
+  <header>Smart Attendance System</header>
   <div class="top-bar">
     <div>
       <strong>Teacher:</strong> <span id="username"></span> |
@@ -59,13 +49,13 @@
     </div>
     <div id="date-time" class="text-end"></div>
   </div>
+
   <div class="container mt-4">
     <h3 class="text-center mb-4">Mark Attendance</h3>
     <div class="d-flex justify-content-end mb-2">
-  <input type="checkbox" id="selectAllCheckbox" class="form-check-input">
-  <label for="selectAllCheckbox" class="form-label ms-2">Mark All Present</label>
-</div>
-
+      <input type="checkbox" id="selectAllCheckbox" class="form-check-input">
+      <label for="selectAllCheckbox" class="form-label ms-2">Mark All Present</label>
+    </div>
     <form id="attendanceForm">
       <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle bg-white">
@@ -77,11 +67,10 @@
             </tr>
           </thead>
           <tbody id="studentTable">
-            <!-- Rows inserted by JavaScript -->
+            <!-- JS will populate -->
           </tbody>
         </table>
       </div>
-
       <div class="text-center">
         <button type="submit" class="btn btn-success mt-3 px-4">Submit Attendance</button>
       </div>
@@ -112,137 +101,284 @@
     </div>
   </div>
 
-  <!-- Submit Confirmation Modal -->
-<div class="modal fade" id="submitConfirmModal" tabindex="-1" aria-labelledby="submitConfirmLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="submitConfirmLabel">Confirm Attendance Submission</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Are you sure you want to submit the attendance?
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-success" id="confirmSubmitBtn">Yes, Submit</button>
+  <!-- Confirmation Modal -->
+  <div class="modal fade" id="submitConfirmModal" tabindex="-1" aria-labelledby="submitConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="submitConfirmLabel">Confirm Attendance Submission</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Are you sure you want to submit the attendance?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" id="confirmSubmitBtn">Yes, Submit</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
-
 
   <footer class="text-center mt-5 py-2" style="background-color: #023246; color: #f6f6f6;">
     &copy; 2025 Smart Attendance System. All rights reserved.
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // === IndexedDB Setup ===
+    let db;
+    const DB_NAME = 'attendanceDB', DB_VERSION = 4;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = function (evt) {
+          db = evt.target.result;
+          ["classes", "students", "teachers", "holidays", "attendance", "logs"].forEach(store => {
+            if (!db.objectStoreNames.contains(store)) {
+              db.createObjectStore(store, { keyPath: store === 'holidays' ? 'date' : 'id', autoIncrement: store === 'attendance' || store === 'logs' });
+            }
+          });
+        };
+        req.onsuccess = evt => { db = evt.target.result; resolve(db); };
+        req.onerror = evt => reject(evt.target.error);
+      });
+    }
+
+    function getAll(store) {
+      return openDB().then(() =>
+        new Promise((res, rej) => {
+          const tx = db.transaction([store], "readonly"),
+              s = tx.objectStore(store),
+              r = s.getAll();
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        })
+      );
+    }
+
+    function save(store, value) {
+      return openDB().then(() =>
+        new Promise((res, rej) => {
+          const tx = db.transaction([store], "readwrite"),
+              s = tx.objectStore(store),
+              r = s.put(value);
+          r.onsuccess = () => res(true);
+          r.onerror = () => rej(r.error);
+        })
+      );
+    }
+
+    function add(store, value) {
+      return openDB().then(() =>
+        new Promise((res, rej) => {
+          const tx = db.transaction([store], "readwrite"),
+              s = tx.objectStore(store),
+              r = s.add(value);
+          r.onsuccess = () => res(true);
+          r.onerror = () => rej(r.error);
+        })
+      );
+    }
+
+    // Initialize sample data
+    async function initializeSampleData() {
+      await openDB();
+      
+      const sampleTeachers = [
+        { id: "teacher1", name: "Dr. Sarah Johnson", password: "password123" },
+        { id: "teacher2", name: "Prof. Michael Chen", password: "teacher456" }
+      ];
+      
+      const sampleStudents = [
+        { id: "student1", name: "Alice Brown", classId: "class1" },
+        { id: "student2", name: "Bob Wilson", classId: "class1" },
+        { id: "student3", name: "Carol Davis", classId: "class1" },
+        { id: "student4", name: "David Miller", classId: "class2" },
+        { id: "student5", name: "Emma Garcia", classId: "class2" }
+      ];
+      
+      try {
+        const existingTeachers = await getAll('teachers');
+        const existingStudents = await getAll('students');
+        
+        if (existingTeachers.length === 0) {
+          for (const teacher of sampleTeachers) {
+            await save('teachers', teacher);
+          }
+        }
+        
+        if (existingStudents.length === 0) {
+          for (const student of sampleStudents) {
+            await save('students', student);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing sample data:', error);
+      }
+    }
+
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
     function updateDateTime() {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString();
-      const timeStr = now.toLocaleTimeString();
-      document.getElementById("date-time").textContent = `${dateStr} | ${timeStr}`;
+      document.getElementById("date-time").textContent = new Date().toLocaleString();
     }
     updateDateTime();
     setInterval(updateDateTime, 1000);
 
-    const students = [
-      { id: 1, name: "Alice", yesterdayStatus: "Present" },
-      { id: 2, name: "Bob", yesterdayStatus: "Absent" },
-      { id: 3, name: "Charlie", yesterdayStatus: "Present" }
-    ];
+    // ========== Attendance Logic ==========
+    let studentList = [];
+    let attendanceDate = new Date().toISOString().slice(0, 10);
+    let teacherName = null;
 
-    function renderStudentTable() {
+    async function fetchAndRenderStudents() {
+      await initializeSampleData();
+      await openDB();
+
+      const classId = getQueryParam("classid") || "class1";
+      const teacherId = getQueryParam("teacherid") || "teacher1";
+      
+      document.getElementById("class-id").textContent = classId;
+
+      const teachers = await getAll('teachers');
+      const teacher = teachers.find(t => (t.id || t.teacherid) === teacherId);
+      teacherName = teacher?.name ? teacher.name : teacherId;
+      document.getElementById("username").textContent = teacherName;
+
+      const allStudents = await getAll('students');
+      studentList = allStudents.filter(s => (s.classId || s.classid) === classId);
+
+      const attendanceAll = await getAll('attendance');
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yDate = yesterday.toISOString().slice(0, 10);
+
       const tbody = document.getElementById("studentTable");
+      if (!studentList.length) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No students found for this class.</td></tr>`;
+        return;
+      }
+
       tbody.innerHTML = "";
-      students.forEach(student => {
-        const row = document.createElement("tr");
-        row.classList.add("text-center");
-        row.innerHTML = `
-          <td>${student.name}</td>
-          <td>${student.yesterdayStatus}</td>
-          <td><input type="checkbox" class="form-check-input student-checkbox" name="attendance_${student.id}" value="present"></td>
-        `;
-        tbody.appendChild(row);
-      });
+      for (let s of studentList) {
+        const att = attendanceAll.slice().reverse().find(a =>
+          a.studentid === (s.id || s.studentid) && a.date === yDate
+        );
+        tbody.innerHTML += `<tr class="text-center">
+          <td>${s.name}</td>
+          <td>${att ? att.status : '<span class="text-muted">-</span>'}</td>
+          <td>
+            <input type="checkbox" class="form-check-input student-checkbox"
+              data-studentid="${s.id || s.studentid}"
+              data-classid="${classId}"
+              data-name="${s.name}">
+          </td>
+        </tr>`;
+      }
     }
 
-    renderStudentTable();
+    document.addEventListener("DOMContentLoaded", fetchAndRenderStudents);
 
-document.getElementById("attendanceForm").addEventListener("submit", function(e) {
-  e.preventDefault();
-  const modal = new bootstrap.Modal(document.getElementById("submitConfirmModal"));
-  modal.show();
-});
-
-document.getElementById("confirmSubmitBtn").addEventListener("click", function () {
-  const attendanceData = [];
-
-  students.forEach(student => {
-    const isPresent = document.querySelector(`[name=attendance_${student.id}]`).checked;
-    attendanceData.push({
-      id: student.id,
-      name: student.name,
-      status: isPresent ? "Present" : "Absent"
-    });
-  });
-
-  console.log("Attendance Submitted:", attendanceData);
-  alert("Attendance submitted! (Frontend only demo)");
-
-  const modal = bootstrap.Modal.getInstance(document.getElementById("submitConfirmModal"));
-  modal.hide();
-});
-
-    document.getElementById("selectAllCheckbox").addEventListener("change", function() {
+    // Select all toggle
+    document.getElementById("selectAllCheckbox").addEventListener("change", function () {
       const allCheckboxes = document.querySelectorAll(".student-checkbox");
       allCheckboxes.forEach(cb => cb.checked = this.checked);
     });
 
-    document.addEventListener("change", function() {
-      const allCheckboxes = document.querySelectorAll(".student-checkbox");
-      const selectAll = document.getElementById("selectAllCheckbox");
-      const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-      selectAll.checked = allChecked;
+    document.addEventListener("change", function (e) {
+      if (e.target.classList.contains('student-checkbox')) {
+        const all = document.querySelectorAll(".student-checkbox");
+        const selected = [...all].every(cb => cb.checked);
+        document.getElementById("selectAllCheckbox").checked = !!all.length && selected;
+      }
     });
 
-    function confirmHoliday() {
-      const password = document.getElementById("teacherPassword").value;
-      if (password === "teacher123") {
-        alert("Holiday set successfully.");
-        const checkboxes = document.querySelectorAll(".student-checkbox");
-        checkboxes.forEach(cb => cb.checked = false);
-        const modal = bootstrap.Modal.getInstance(document.getElementById("holidayModal"));
-        modal.hide();
-      } else {
-        alert("Incorrect password. Try again.");
+    let onConfirmSubmit = null;
+
+    document.getElementById("attendanceForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById("submitConfirmModal"));
+      onConfirmSubmit = submitAttendance;
+      modal.show();
+    });
+
+    document.getElementById("confirmSubmitBtn").addEventListener("click", async function () {
+      if (onConfirmSubmit) await onConfirmSubmit();
+      const modal = bootstrap.Modal.getInstance(document.getElementById("submitConfirmModal"));
+      modal.hide();
+      setTimeout(() => document.body.focus(), 0); // Add this line
+    });
+
+    async function submitAttendance() {
+      await openDB();
+      const teacherId = getQueryParam("teacherid") || "teacher1";
+      const classId = getQueryParam("classid") || "class1";
+      const today = attendanceDate;
+
+      const attendanceData = [...document.querySelectorAll(".student-checkbox")].map(cb => ({
+        studentid: cb.dataset.studentid,
+        classid: classId,
+        status: cb.checked ? "Present" : "Absent",
+        markedby: teacherId,
+        markedby_name: teacherName,
+        date: today
+      }));
+
+      try {
+        // Remove existing attendance for today
+        const attAll = await getAll('attendance');
+        const tx = db.transaction(['attendance'], "readwrite");
+        const store = tx.objectStore('attendance');
+        
+        // Delete existing records for today and this class
+        const deletePromises = [];
+        attAll.forEach((a, index) => {
+          if (a.classid === classId && a.date === today) {
+            deletePromises.push(new Promise((resolve, reject) => {
+              const deleteReq = store.delete(index + 1); // IndexedDB uses 1-based auto-increment
+              deleteReq.onsuccess = () => resolve();
+              deleteReq.onerror = () => reject(deleteReq.error);
+            }));
+          }
+        });
+
+        await Promise.all(deletePromises);
+
+        // Add new attendance records
+        for (const record of attendanceData) {
+          await add('attendance', record);
+        }
+        
+        alert("✅ Attendance submitted successfully!");
+      } catch (error) {
+        console.error('Error submitting attendance:', error);
+        alert("❌ Failed to submit attendance.");
       }
     }
+
+    async function confirmHoliday() {
+      const password = document.getElementById("teacherPassword").value;
+      const teacherId = getQueryParam('teacherid') || 'teacher1';
+      await openDB();
+      const teachers = await getAll('teachers');
+      const teacher = teachers.find(t => (t.id || t.teacherid) === teacherId && t.password === password);
+      if (!teacher) {
+        alert("Incorrect password. Try again.");
+        return;
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      await save('holidays', { date: today, reason: `Marked as holiday by ${teacher.name || teacherId}` });
+      alert("Holiday set successfully.");
+      const modal = bootstrap.Modal.getInstance(document.getElementById("holidayModal"));
+      modal.hide();
+      document.getElementById("teacherPassword").value = "";
+    }
   </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBiMw2jFky9giT5QaTgdnaHEmJDZMzxkXY",
-    authDomain: "student-attendance-syste-bf611.firebaseapp.com",
-    projectId: "student-attendance-syste-bf611",
-    storageBucket: "student-attendance-syste-bf611.firebasestorage.app",
-    messagingSenderId: "158541624825",
-    appId: "1:158541624825:web:f3189d8a7a43c4eae57928",
-    measurementId: "G-KD9DKSYBK3"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </body>
 </html>

@@ -42,9 +42,6 @@
       background-color: #03506f;
     }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 </head>
 <body>
   <header>Admin Dashboard – Smart Attendance System</header>
@@ -270,508 +267,354 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCWo8f4M2sWUkMjJ2RQ7wqF4S82xvFRpYI",
-      authDomain: "smart-attendance-system-41dc9.firebaseapp.com",
-      databaseURL: "https://smart-attendance-system-41dc9-default-rtdb.firebaseio.com",
-      projectId: "smart-attendance-system-41dc9",
-      storageBucket: "smart-attendance-system-41dc9.firebasestorage.app",
-      messagingSenderId: "362565596461",
-      appId: "1:362565596461:web:c2733802169d8c23468fa4",
-      measurementId: "G-PGR5EJQ608"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const analytics = firebase.analytics();
+  // --- IndexedDB Setup ---
+  let db, classes = [], students = [], teachers = [], holidays = [], logs = [];
+  let editingStudentIndex = null, editingTeacherIndex = null;
+  const DB_NAME = 'attendanceDB', DB_VERSION = 4;
 
-    let classes = [], students = [], teachers = [], holidays = [], logs = [];
-
-    function loadAllData() {
-      db.ref('classes').once('value').then(snapshot => {
-        classes = [];
-        snapshot.forEach(child => classes.push(child.val()));
-        renderClasses();
-        populateStudentClassFilter();
-        populateNewStudentClassDropdown();
-        populateLogClassFilter();
-      });
-      db.ref('students').once('value').then(snapshot => {
-        students = [];
-        snapshot.forEach(child => students.push(child.val()));
-        renderStudentTable();
-      });
-      db.ref('teachers').once('value').then(snapshot => {
-        teachers = [];
-        snapshot.forEach(child => teachers.push(child.val()));
-        renderTeacherTable();
-      });
-      db.ref('holidays').once('value').then(snapshot => {
-        holidays = [];
-        snapshot.forEach(child => holidays.push(child.val()));
-        renderHolidays();
-      });
-      db.ref('logs').once('value').then(snapshot => {
-        logs = [];
-        snapshot.forEach(child => logs.push(child.val()));
-        renderLogs();
-      });
-    }
-    loadAllData();
-
-    function showConfirm(msg, onConfirm) {
-      document.getElementById("confirmModalMsg").textContent = msg;
-      const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
-      const confirmOkButton = document.getElementById("confirmModalOk");
-      confirmOkButton.onclick = null;
-      confirmOkButton.onclick = function() {
-        confirmModal.hide();
-        onConfirm();
-      };
-      confirmModal.show();
-    }
-    function populateStudentClassFilter() {
-      const filterSelect = document.getElementById("studentClassFilter");
-      filterSelect.innerHTML = `<option value="">All Classes</option>`;
-      classes.forEach(cls => {
-        filterSelect.innerHTML += `<option value="${cls.id}">${cls.id} - ${cls.name}</option>`;
-      });
-    }
-    function populateNewStudentClassDropdown() {
-      const select = document.getElementById("newStudentClass");
-      select.innerHTML = `<option value="">Select Class</option>`;
-      classes.forEach(cls => {
-        select.innerHTML += `<option value="${cls.id}">${cls.id}</option>`;
-      });
-    }
-    function populateLogClassFilter() {
-      const select = document.getElementById("logClassFilter");
-      select.innerHTML = `<option value="">All Classes</option>`;
-      classes.forEach(cls => {
-        select.innerHTML += `<option value="${cls.id}">${cls.id}</option>`;
-      });
-    }
-    function renderClasses() {
-      classSummaryContainer.innerHTML = "";
-      classList.innerHTML = "";
-      classes.forEach((cls, index) => {
-        const todayPresent = Math.floor(Math.random() * (cls.students + 1));
-        const absenteesToday = cls.students - todayPresent;
-        const classTeacher = teachers.find(t => t.name && cls.name && cls.name.includes(t.name))?.name || "Not Assigned";
-        const lastAttendanceUpdate = new Date().toISOString().slice(0, 10);
-        classSummaryContainer.innerHTML += `
-          <div class="col-md-4">
-            <div class="card p-3">
-              <h6 class="card-title">
-                Class ID: ${cls.id}${cls.name ? ` <span class="text-secondary">(${cls.name})</span>` : ""}
-              </h6>
-              <ul class="list-group list-group-flush">
-                <li class="list-group-item">Class Teacher: <strong>${classTeacher}</strong></li>
-                <li class="list-group-item">Total Students: <strong>${cls.students}</strong></li>
-                <li class="list-group-item">Average Attendance: <strong class="${cls.avgAttendance < 75 ? 'text-danger' : 'text-success'}">${cls.avgAttendance}%</strong></li>
-                <li class="list-group-item text-primary">Today: <strong>${todayPresent} / ${cls.students} Present</strong></li>
-                <li class="list-group-item text-danger">Absentees Today: <strong>${absenteesToday}</strong></li>
-                <li class="list-group-item text-muted">Last Attendance Updated: ${lastAttendanceUpdate}</li>
-              </ul>
-            </div>
-          </div>`;
-        classList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
-          <div>
-            <strong>${cls.id}</strong>${cls.name ? ` - ${cls.name}` : ""}
-            <span class="ms-2 text-muted">Students: ${cls.students}, Attendance: ${cls.avgAttendance}%</span>
-          </div>
-          <button class="btn btn-sm btn-danger" onclick="deleteClass(${index})">Delete</button>
-        </li>`;
-      });
-      document.getElementById("totalClasses").textContent = classes.length;
-    }
-    function addClass() {
-      const newClassInput = document.getElementById("newClassInput");
-      const newClassNameInput = document.getElementById("newClassNameInput");
-      const classId = newClassInput.value.trim().toUpperCase();
-      const className = newClassNameInput.value.trim();
-      if (!classId || !className) {
-        alert("Please enter both Class ID and Class Name.");
-        return;
-      }
-      if (classes.some(cls => cls.id === classId)) {
-        alert(`Class ID "${classId}" already exists.`);
-        return;
-      }
-      showConfirm(`Add new class "${classId} - ${className}"?`, function() {
-        const newClass = { id: classId, name: className, students: 0, avgAttendance: 0 };
-        classes.push(newClass);
-        db.ref('classes/' + classId).set(newClass);
-        addLog("Class", `Class ${classId} (${className}) added`);
-        newClassInput.value = "";
-        newClassNameInput.value = "";
-        renderClasses();
-        populateStudentClassFilter();
-        populateNewStudentClassDropdown();
-      });
-    }
-    function deleteClass(index) {
-      const classToDelete = classes[index];
-      if (students.some(student => student.classId === classToDelete.id)) {
-        alert(`Cannot delete class "${classToDelete.id}" as there are still students assigned to it. Please reassign or delete students first.`);
-        return;
-      }
-      showConfirm(`Delete class "${classToDelete.id}"? This action cannot be undone.`, function() {
-        db.ref('classes/' + classToDelete.id).remove();
-        addLog("Class", `Class ${classToDelete.id} (${classToDelete.name}) deleted`);
-        classes.splice(index, 1);
-        renderClasses();
-        populateStudentClassFilter();
-        populateNewStudentClassDropdown();
-      });
-    }
-    function renderHolidays() {
-      holidayList.innerHTML = "";
-      holidays.forEach((h, index) => {
-        holidayList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
-          <span>
-            <strong>${h.date}</strong> - ${h.reason}
-          </span>
-          <button class="btn btn-sm btn-danger" onclick="deleteHoliday(${index})">Delete</button>
-        </li>`;
-      });
-      document.getElementById("totalHolidays").textContent = holidays.length;
-    }
-    function addHoliday() {
-      const dateInput = document.getElementById("newHolidayDate");
-      const reasonInput = document.getElementById("newHolidayReason");
-      const dateVal = dateInput.value.trim();
-      const reasonVal = reasonInput.value.trim();
-      if (!dateVal || !reasonVal) {
-        alert("Please enter both date and reason for the holiday.");
-        return;
-      }
-      if (holidays.some(h => h.date === dateVal)) {
-        alert(`A holiday on ${dateVal} already exists.`);
-        return;
-      }
-      showConfirm(`Add holiday on ${dateVal} for "${reasonVal}"?`, function() {
-        const newHoliday = { date: dateVal, reason: reasonVal };
-        holidays.push(newHoliday);
-        db.ref('holidays/' + dateVal).set(newHoliday);
-        addLog("Holiday", `Holiday added: ${reasonVal} (${dateVal})`);
-        dateInput.value = "";
-        reasonInput.value = "";
-        renderHolidays();
-      });
-    }
-    function deleteHoliday(index) {
-      const holidayToDelete = holidays[index];
-      showConfirm(`Delete holiday on ${holidayToDelete.date} (${holidayToDelete.reason})?`, function() {
-        db.ref('holidays/' + holidayToDelete.date).remove();
-        addLog("Holiday", `Holiday deleted: ${holidayToDelete.reason} (${holidayToDelete.date})`);
-        holidays.splice(index, 1);
-        renderHolidays();
-      });
-    }
-    let editingStudentIndex = null;
-    function renderStudentTable() {
-      studentTableBody.innerHTML = "";
-      const classFilter = document.getElementById("studentClassFilter")?.value || "";
-      let filteredStudents = students;
-      if (classFilter) {
-        filteredStudents = students.filter(stu => stu.classId === classFilter);
-      }
-      if (filteredStudents.length === 0) {
-        studentTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No students found for this selection.</td></tr>`;
-        return;
-      }
-      filteredStudents.forEach((student, index) => {
-        const originalIndex = students.findIndex(s => s.id === student.id);
-        if (editingStudentIndex === originalIndex) {
-          studentTableBody.innerHTML += `
-            <tr>
-              <td><input class="form-control" value="${student.id}" id="editStudentId"/></td>
-              <td><input class="form-control" value="${student.name}" id="editStudentName"/></td>
-              <td>
-                <select class="form-select" id="editStudentClassId">
-                  ${classes.map(cls => `<option value="${cls.id}" ${student.classId === cls.id ? "selected" : ""}>${cls.id}</option>`).join("")}
-                </select>
-              </td>
-              <td><input class="form-control" value="${student.contact}" id="editStudentContact"/></td>
-              <td>
-                <select class="form-select" id="editStudentGender">
-                  <option value="Male" ${student.gender === "Male" ? "selected" : ""}>Male</option>
-                  <option value="Female" ${student.gender === "Female" ? "selected" : ""}>Female</option>
-                  <option value="Other" ${student.gender === "Other" ? "selected" : ""}>Other</option>
-                </select>
-              </td>
-              <td>
-                <div class="d-flex gap-2 justify-content-center">
-                  <button class="btn btn-success btn-sm" onclick="saveStudent(${originalIndex})">Save</button>
-                  <button class="btn btn-secondary btn-sm" onclick="cancelStudentEdit()">Cancel</button>
-                </div>
-              </td>
-            </tr>`;
-        } else {
-          studentTableBody.innerHTML += `
-            <tr>
-              <td>${student.id}</td>
-              <td>${student.name}</td>
-              <td>${student.classId}</td>
-              <td>${student.contact}</td>
-              <td>${student.gender}</td>
-              <td>
-                <button class="btn btn-primary btn-sm me-1" onclick="editStudentRow(${originalIndex})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteStudent(${originalIndex})">Delete</button>
-              </td>
-            </tr>`;
-        }
-      });
-    }
-    function editStudentRow(index) {
-      editingStudentIndex = index;
-      renderStudentTable();
-    }
-    function saveStudent(index) {
-      const currentStudent = students[index];
-      const newId = document.getElementById("editStudentId").value.trim();
-      const newName = document.getElementById("editStudentName").value.trim();
-      const newClassId = document.getElementById("editStudentClassId").value.trim();
-      const newContact = document.getElementById("editStudentContact").value.trim();
-      const newGender = document.getElementById("editStudentGender").value;
-      if (!newId || !newName || !newClassId || !newContact || !newGender) {
-        alert("All fields are required.");
-        return;
-      }
-      if (newId !== currentStudent.id && students.some(s => s.id === newId)) {
-        alert(`Student ID "${newId}" already exists.`);
-        return;
-      }
-      if (!classes.some(cls => cls.id === newClassId)) {
-        alert(`Class ID "${newClassId}" does not exist. Please add it first.`);
-        return;
-      }
-      showConfirm(`Save changes for student "${currentStudent.name}" (ID: ${currentStudent.id})?`, function() {
-        students[index] = {
-          id: newId,
-          name: newName,
-          classId: newClassId,
-          contact: newContact,
-          gender: newGender
-        };
-        db.ref('students/' + newId).set(students[index]);
-        addLog("Student", `Student ${currentStudent.id} edited`);
-        editingStudentIndex = null;
-        renderStudentTable();
-      });
-    }
-    function cancelStudentEdit() {
-      editingStudentIndex = null;
-      renderStudentTable();
-    }
-    function addStudent() {
-      const studentId = document.getElementById("newStudentID").value.trim();
-      const studentName = document.getElementById("newStudentName").value.trim();
-      const studentClass = document.getElementById("newStudentClass").value.trim();
-      const studentContact = document.getElementById("newStudentContact").value.trim();
-      const studentGender = document.getElementById("newStudentGender").value;
-      if (!studentId || !studentName || !studentClass || !studentContact || !studentGender) {
-        alert("Please fill all student fields.");
-        return;
-      }
-      if (students.some(s => s.id === studentId)) {
-        alert(`Student ID "${studentId}" already exists.`);
-        return;
-      }
-      if (!classes.some(cls => cls.id === studentClass)) {
-        alert(`Class ID "${studentClass}" does not exist. Please add it first.`);
-        return;
-      }
-      showConfirm(`Add new student "${studentName}" (ID: ${studentId}) to class ${studentClass}?`, function() {
-        const newStudent = {
-          id: studentId,
-          name: studentName,
-          classId: studentClass,
-          contact: studentContact,
-          gender: studentGender
-        };
-        students.push(newStudent);
-        db.ref('students/' + studentId).set(newStudent);
-        addLog("Student", `Student ${studentId} (${studentName}) added to ${studentClass}`);
-        document.getElementById("newStudentID").value = "";
-        document.getElementById("newStudentName").value = "";
-        document.getElementById("newStudentClass").value = "";
-        document.getElementById("newStudentContact").value = "";
-        document.getElementById("newStudentGender").value = "";
-        renderStudentTable();
-      });
-    }
-    function deleteStudent(index) {
-      const studentToDelete = students[index];
-      showConfirm(`Delete student "${studentToDelete.name}" (ID: ${studentToDelete.id}) from class ${studentToDelete.classId}? This action cannot be undone.`, function() {
-        db.ref('students/' + studentToDelete.id).remove();
-        addLog("Student", `Student ${studentToDelete.id} (${studentToDelete.name}) deleted from ${studentToDelete.classId}`);
-        students.splice(index, 1);
-        renderStudentTable();
-      });
-    }
-    let editingTeacherIndex = null;
-    function renderTeacherTable() {
-      teacherTableBody.innerHTML = "";
-      if (teachers.length === 0) {
-        teacherTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No teachers found.</td></tr>`;
-        return;
-      }
-      teachers.forEach((teacher, index) => {
-        if (editingTeacherIndex === index) {
-          teacherTableBody.innerHTML += `
-            <tr>
-              <td><input class="form-control" value="${teacher.id}" id="editTeacherId"/></td>
-              <td><input class="form-control" value="${teacher.name}" id="editTeacherName"/></td>
-              <td><input class="form-control" value="${teacher.contact}" id="editTeacherContact"/></td>
-              <td><input class="form-control" value="${teacher.subject}" id="editTeacherSubject"/></td>
-              <td><input class="form-control" type="password" value="${teacher.password}" id="editTeacherPassword"/></td>
-              <td>
-                <div class="d-flex gap-2 justify-content-center">
-                  <button class="btn btn-success btn-sm" onclick="saveTeacher(${index})">Save</button>
-                  <button class="btn btn-secondary btn-sm" onclick="cancelTeacherEdit()">Cancel</button>
-                </div>
-              </td>
-            </tr>`;
-        } else {
-          teacherTableBody.innerHTML += `
-            <tr>
-              <td>${teacher.id}</td>
-              <td>${teacher.name}</td>
-              <td>${teacher.contact}</td>
-              <td>${teacher.subject}</td>
-              <td>********</td>
-              <td>
-                <button class="btn btn-primary btn-sm me-1" onclick="editTeacherRow(${index})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteTeacher(${index})">Delete</button>
-              </td>
-            </tr>`;
-        }
-      });
-    }
-    function addTeacher() {
-      const teacherId = document.getElementById("newTeacherID").value.trim();
-      const teacherName = document.getElementById("newTeacherName").value.trim();
-      const teacherContact = document.getElementById("newTeacherContact").value.trim();
-      const teacherSubject = document.getElementById("newTeacherSubject").value.trim();
-      const teacherPassword = document.getElementById("newTeacherPassword").value.trim();
-      if (!teacherId || !teacherName || !teacherContact || !teacherSubject || !teacherPassword) {
-        alert("Please fill all teacher fields.");
-        return;
-      }
-      if (teachers.some(t => t.id === teacherId)) {
-        alert(`Teacher ID "${teacherId}" already exists.`);
-        return;
-      }
-      showConfirm(`Add teacher "${teacherName}" (ID: ${teacherId})?`, function() {
-        const newTeacher = { id: teacherId, name: teacherName, contact: teacherContact, subject: teacherSubject, password: teacherPassword };
-        teachers.push(newTeacher);
-        db.ref('teachers/' + teacherId).set(newTeacher);
-        addLog("Teacher", `Teacher ${teacherId} (${teacherName}) added`);
-        document.getElementById("newTeacherID").value = "";
-        document.getElementById("newTeacherName").value = "";
-        document.getElementById("newTeacherContact").value = "";
-        document.getElementById("newTeacherSubject").value = "";
-        document.getElementById("newTeacherPassword").value = "";
-        renderTeacherTable();
-      });
-    }
-    function editTeacherRow(index) {
-      editingTeacherIndex = index;
-      renderTeacherTable();
-    }
-    function saveTeacher(index) {
-      const currentTeacher = teachers[index];
-      const newId = document.getElementById("editTeacherId").value.trim();
-      const newName = document.getElementById("editTeacherName").value.trim();
-      const newContact = document.getElementById("editTeacherContact").value.trim();
-      const newSubject = document.getElementById("editTeacherSubject").value.trim();
-      const newPassword = document.getElementById("editTeacherPassword").value.trim();
-      if (!newId || !newName || !newContact || !newSubject || !newPassword) {
-        alert("All fields are required.");
-        return;
-      }
-      if (newId !== currentTeacher.id && teachers.some(t => t.id === newId)) {
-        alert(`Teacher ID "${newId}" already exists.`);
-        return;
-      }
-      showConfirm(`Save changes for teacher "${currentTeacher.name}" (ID: ${currentTeacher.id})?`, function() {
-        teachers[index] = {
-          id: newId,
-          name: newName,
-          contact: newContact,
-          subject: newSubject,
-          password: newPassword
-        };
-        db.ref('teachers/' + newId).set(teachers[index]);
-        addLog("Teacher", `Teacher ${currentTeacher.id} edited`);
-        editingTeacherIndex = null;
-        renderTeacherTable();
-      });
-    }
-    function cancelTeacherEdit() {
-      editingTeacherIndex = null;
-      renderTeacherTable();
-    }
-    function deleteTeacher(index) {
-      const teacherToDelete = teachers[index];
-      showConfirm(`Delete teacher "${teacherToDelete.name}" (ID: ${teacherToDelete.id})? This action cannot be undone.`, function() {
-        db.ref('teachers/' + teacherToDelete.id).remove();
-        addLog("Teacher", `Teacher ${teacherToDelete.id} (${teacherToDelete.name}) deleted`);
-        teachers.splice(index, 1);
-        renderTeacherTable();
-      });
-    }
-    function renderLogs() {
-      logsList.innerHTML = "";
-      const filterDate = document.getElementById("logFilterDate").value;
-      const filterType = document.getElementById("logTypeFilter").value;
-      const filterClass = document.getElementById("logClassFilter").value;
-      let filteredLogs = logs;
-      if (filterDate) {
-        filteredLogs = filteredLogs.filter(log => log.date === filterDate);
-      }
-      if (filterType) {
-        filteredLogs = filteredLogs.filter(log => log.type === filterType);
-      }
-      if (filterClass) {
-        filteredLogs = filteredLogs.filter(log =>
-          log.message.includes(filterClass)
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      if (db) return resolve(db);
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = evt => {
+        db = evt.target.result;
+        ['classes', 'students', 'teachers', 'holidays'].forEach(store =>
+          !db.objectStoreNames.contains(store) && db.createObjectStore(store, { keyPath: store === 'holidays' ? 'date' : 'id' })
         );
-      }
-      if (filteredLogs.length === 0) {
-        logsList.innerHTML = `<li class="list-group-item text-center text-muted">No logs for this selection.</li>`;
-        return;
-      }
-      filteredLogs.forEach(log => {
-        logsList.innerHTML += `<li class="list-group-item"><span class="badge bg-info me-2">${log.type}</span> [${log.date}] ${log.message}</li>`;
-      });
-    }
-    function addLog(type, message) {
-      const log = {
-        date: new Date().toISOString().slice(0, 10),
-        type,
-        message
+        if (!db.objectStoreNames.contains('logs')) db.createObjectStore('logs', { autoIncrement: true });
       };
-      logs.push(log);
-      db.ref('logs').push(log);
-      renderLogs();
-    }
-    document.getElementById("studentsModal").addEventListener("show.bs.modal", function() {
-      populateStudentClassFilter();
-      populateNewStudentClassDropdown();
-      renderStudentTable();
+      req.onsuccess = evt => { db = evt.target.result; resolve(db); };
+      req.onerror = evt => reject(evt.target.error);
     });
-    document.getElementById("studentClassFilter").addEventListener("change", renderStudentTable);
-    document.getElementById("teachersModal").addEventListener("show.bs.modal", renderTeacherTable);
-    document.getElementById("logsModal").addEventListener("show.bs.modal", function() {
-      populateLogClassFilter();
-      renderLogs();
+  }
+  function getAll(store) { return openDB().then(() => new Promise((res, rej) => {
+    const tx = db.transaction([store], "readonly"), s = tx.objectStore(store), r = s.getAll();
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  })); }
+  function save(store, val) { return openDB().then(() => new Promise((res, rej) => {
+    const tx = db.transaction([store], "readwrite"), s = tx.objectStore(store), r = s.put(val);
+    r.onsuccess = () => res(true); r.onerror = () => rej(r.error);
+  })); }
+  function remove(store, key) { return openDB().then(() => new Promise((res, rej) => {
+    const tx = db.transaction([store], "readwrite"), s = tx.objectStore(store), r = s.delete(key);
+    r.onsuccess = () => res(true); r.onerror = () => rej(r.error);
+  })); }
+
+  // --- Data Loading ---
+  async function loadAllData() {
+    await openDB();
+    [classes, students, teachers, holidays, logs] = await Promise.all(
+      ['classes', 'students', 'teachers', 'holidays', 'logs'].map(getAll)
+    );
+    renderClasses(); renderStudentTable(); renderTeacherTable(); renderHolidays(); renderLogs();
+  }
+
+  // --- UI Helpers ---
+  function populateStudentClassFilter() {
+    const sel = document.getElementById("studentClassFilter");
+    sel.innerHTML = `<option value="">All Classes</option>` + classes.map(cls => `<option value="${cls.id}">${cls.id} - ${cls.name}</option>`).join('');
+  }
+  function populateNewStudentClassDropdown() {
+    const sel = document.getElementById("newStudentClass");
+    sel.innerHTML = `<option value="">Select Class</option>` + classes.map(cls => `<option value="${cls.id}">${cls.id}</option>`).join('');
+  }
+  function populateLogClassFilter() {
+    const sel = document.getElementById("logClassFilter");
+    sel.innerHTML = `<option value="">All Classes</option>` + classes.map(cls => `<option value="${cls.id}">${cls.id}</option>`).join('');
+  }
+
+  // --- Classes CRUD ---
+  async function renderClasses() {
+    const classSummary = document.getElementById("classSummaryContainer"), classList = document.getElementById("classList");
+    classSummary.innerHTML = classList.innerHTML = "";
+    classes.forEach((cls, i) => {
+      cls.students = students.filter(st => st.classId === cls.id).length;
+      if (!cls.avgAttendance) cls.avgAttendance = 95;
+      const todayPresent = Math.floor(Math.random() * (cls.students + 1)), absenteesToday = cls.students - todayPresent;
+      const classTeacher = teachers.find(t => t.subject && cls.name && cls.name.includes(t.subject))?.name || "Not Assigned";
+      classSummary.innerHTML += `<div class="col-md-4"><div class="card p-3">
+        <h6 class="card-title">Class ID: ${cls.id}${cls.name ? ` <span class="text-secondary">(${cls.name})</span>` : ""}</h6>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">Class Teacher: <strong>${classTeacher}</strong></li>
+          <li class="list-group-item">Total Students: <strong>${cls.students}</strong></li>
+          <li class="list-group-item">Average Attendance: <strong class="${cls.avgAttendance < 75 ? 'text-danger' : 'text-success'}">${cls.avgAttendance || 0}%</strong></li>
+          <li class="list-group-item text-primary">Today: <strong>${todayPresent} / ${cls.students} Present</strong></li>
+          <li class="list-group-item text-danger">Absentees Today: <strong>${absenteesToday}</strong></li>
+          <li class="list-group-item text-muted">Last Attendance Updated: ${new Date().toISOString().slice(0, 10)}</li>
+        </ul></div></div>`;
+      classList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
+        <div><strong>${cls.id}</strong>${cls.name ? ` - ${cls.name}` : ""}<span class="ms-2 text-muted">Students: ${cls.students}, Attendance: ${cls.avgAttendance || 0}%</span></div>
+        <button class="btn btn-sm btn-danger" onclick="deleteClass(${i})">Delete</button>
+      </li>`;
     });
-    document.getElementById("logFilterDate").addEventListener("change", renderLogs);
-    document.getElementById("logTypeFilter").addEventListener("change", renderLogs);
-    document.getElementById("logClassFilter").addEventListener("change", renderLogs);
+    document.getElementById("totalClasses").textContent = classes.length;
+  }
+  async function addClass() {
+    const id = document.getElementById("newClassInput").value.trim().toUpperCase(),
+      name = document.getElementById("newClassNameInput").value.trim();
+    if (!id || !name) return alert("Please enter both Class ID and Class Name.");
+    if (classes.some(cls => cls.id === id)) return alert(`Class ID "${id}" already exists.`);
+    showConfirm(`Add new class "${id} - ${name}"?`, async () => {
+      await save('classes', { id, name, students: 0, avgAttendance: 100 });
+      classes = await getAll('classes');
+      document.getElementById("newClassInput").value = "";
+      document.getElementById("newClassNameInput").value = "";
+      renderClasses(); populateStudentClassFilter(); populateNewStudentClassDropdown();
+      addLog("Class", `Class ${id} (${name}) added`);
+    });
+  }
+  async function deleteClass(i) {
+    const cls = classes[i];
+    if (students.some(stu => stu.classId === cls.id)) return alert(`Cannot delete class "${cls.id}" as there are still students assigned to it.`);
+    showConfirm(`Delete class "${cls.id}"? This action cannot be undone.`, async () => {
+      await remove('classes', cls.id);
+      classes = await getAll('classes');
+      renderClasses(); populateStudentClassFilter(); populateNewStudentClassDropdown();
+      addLog("Class", `Class ${cls.id} (${cls.name}) deleted`);
+    });
+  }
+
+  // --- Holidays CRUD ---
+  async function renderHolidays() {
+    const holidayList = document.getElementById("holidayList");
+    holidayList.innerHTML = holidays.map((h, i) =>
+      `<li class="list-group-item d-flex justify-content-between align-items-center">
+        <span><strong>${h.date}</strong> - ${h.reason}</span>
+        <button class="btn btn-sm btn-danger" onclick="deleteHoliday(${i})">Delete</button>
+      </li>`).join('');
+    document.getElementById("totalHolidays").textContent = holidays.length;
+  }
+  async function addHoliday() {
+    const date = document.getElementById("newHolidayDate").value.trim(),
+      reason = document.getElementById("newHolidayReason").value.trim();
+    if (!date || !reason) return alert("Please enter both date and reason for the holiday.");
+    if (holidays.some(h => h.date === date)) return alert(`A holiday on ${date} already exists.`);
+    showConfirm(`Add holiday on ${date} for "${reason}"?`, async () => {
+      await save('holidays', { date, reason });
+      holidays = await getAll('holidays');
+      document.getElementById("newHolidayDate").value = "";
+      document.getElementById("newHolidayReason").value = "";
+      renderHolidays(); addLog("Holiday", `Holiday added: ${reason} (${date})`);
+    });
+  }
+  async function deleteHoliday(i) {
+    const h = holidays[i];
+    showConfirm(`Delete holiday on ${h.date} (${h.reason})?`, async () => {
+      await remove('holidays', h.date);
+      holidays = await getAll('holidays');
+      renderHolidays(); addLog("Holiday", `Holiday deleted: ${h.reason} (${h.date})`);
+    });
+  }
+
+  // --- Students CRUD ---
+  async function renderStudentTable() {
+    const tbody = document.getElementById("studentTableBody"),
+      classFilter = document.getElementById("studentClassFilter")?.value || "";
+    let filtered = classFilter ? students.filter(stu => stu.classId === classFilter) : students;
+    if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No students found for this selection.</td></tr>`;
+    tbody.innerHTML = filtered.map((student, i) => {
+      const idx = students.findIndex(s => s.id === student.id);
+      return editingStudentIndex === idx
+        ? `<tr>
+            <td><input class="form-control" value="${student.id}" id="editStudentId"/></td>
+            <td><input class="form-control" value="${student.name}" id="editStudentName"/></td>
+            <td><select class="form-select" id="editStudentClassId">${classes.map(cls => `<option value="${cls.id}" ${student.classId === cls.id ? "selected" : ""}>${cls.id}</option>`).join("")}</select></td>
+            <td><input class="form-control" value="${student.contact}" id="editStudentContact"/></td>
+            <td><select class="form-select" id="editStudentGender">
+              <option value="Male" ${student.gender === "Male" ? "selected" : ""}>Male</option>
+              <option value="Female" ${student.gender === "Female" ? "selected" : ""}>Female</option>
+              <option value="Other" ${student.gender === "Other" ? "selected" : ""}>Other</option>
+            </select></td>
+            <td>
+              <div class="d-flex gap-2 justify-content-center">
+                <button class="btn btn-success btn-sm" onclick="saveStudent(${idx})">Save</button>
+                <button class="btn btn-secondary btn-sm" onclick="cancelStudentEdit()">Cancel</button>
+              </div>
+            </td>
+          </tr>`
+        : `<tr>
+            <td>${student.id}</td>
+            <td>${student.name}</td>
+            <td>${student.classId}</td>
+            <td>${student.contact}</td>
+            <td>${student.gender}</td>
+            <td>
+              <button class="btn btn-primary btn-sm me-1" onclick="editStudentRow(${idx})">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteStudent(${idx})">Delete</button>
+            </td>
+          </tr>`;
+    }).join('');
+  }
+  function editStudentRow(i) { editingStudentIndex = i; renderStudentTable(); }
+  async function saveStudent(i) {
+    const s = students[i], newId = document.getElementById("editStudentId").value.trim(),
+      newName = document.getElementById("editStudentName").value.trim(),
+      newClassId = document.getElementById("editStudentClassId").value.trim(),
+      newContact = document.getElementById("editStudentContact").value.trim(),
+      newGender = document.getElementById("editStudentGender").value;
+    if (![newId, newName, newClassId, newContact, newGender].every(Boolean)) return alert("All fields are required.");
+    if (newId !== s.id && students.some(stu => stu.id === newId)) return alert(`Student ID "${newId}" already exists.`);
+    if (!classes.some(cls => cls.id === newClassId)) return alert(`Class ID "${newClassId}" does not exist.`);
+    showConfirm(`Save changes for student "${s.name}" (ID: ${s.id})?`, async () => {
+      await remove('students', s.id);
+      await save('students', { id: newId, name: newName, classId: newClassId, contact: newContact, gender: newGender });
+      students = await getAll('students');
+      editingStudentIndex = null;
+      renderStudentTable(); addLog("Student", `Student ${s.id} edited`); renderClasses();
+    });
+  }
+  function cancelStudentEdit() { editingStudentIndex = null; renderStudentTable(); }
+  async function addStudent() {
+    const id = document.getElementById("newStudentID").value.trim(),
+      name = document.getElementById("newStudentName").value.trim(),
+      cls = document.getElementById("newStudentClass").value.trim(),
+      contact = document.getElementById("newStudentContact").value.trim(),
+      gender = document.getElementById("newStudentGender").value;
+    if (![id, name, cls, contact, gender].every(Boolean)) return alert("Please fill all student fields.");
+    if (students.some(s => s.id === id)) return alert(`Student ID "${id}" already exists.`);
+    if (!classes.some(c => c.id === cls)) return alert(`Class ID "${cls}" does not exist.`);
+    showConfirm(`Add new student "${name}" (ID: ${id}) to class ${cls}?`, async () => {
+      await save('students', { id, name, classId: cls, contact, gender });
+      students = await getAll('students');
+      ["newStudentID", "newStudentName", "newStudentClass", "newStudentContact", "newStudentGender"].forEach(id => document.getElementById(id).value = "");
+      renderStudentTable(); addLog("Student", `Student ${id} (${name}) added to ${cls}`); renderClasses();
+    });
+  }
+  async function deleteStudent(i) {
+    const s = students[i];
+    showConfirm(`Delete student "${s.name}" (ID: ${s.id}) from class ${s.classId}? This action cannot be undone.`, async () => {
+      await remove('students', s.id);
+      students = await getAll('students');
+      renderStudentTable(); addLog("Student", `Student ${s.id} (${s.name}) deleted from ${s.classId}`); renderClasses();
+    });
+  }
+
+  // --- Teachers CRUD ---
+  async function renderTeacherTable() {
+    const tbody = document.getElementById("teacherTableBody");
+    tbody.innerHTML = teachers.length
+      ? teachers.map((t, i) => editingTeacherIndex === i
+        ? `<tr>
+            <td><input class="form-control" value="${t.id}" id="editTeacherId"/></td>
+            <td><input class="form-control" value="${t.name}" id="editTeacherName"/></td>
+            <td><input class="form-control" value="${t.contact}" id="editTeacherContact"/></td>
+            <td><input class="form-control" value="${t.subject}" id="editTeacherSubject"/></td>
+            <td><input class="form-control" type="password" value="${t.password}" id="editTeacherPassword"/></td>
+            <td>
+              <div class="d-flex gap-2 justify-content-center">
+                <button class="btn btn-success btn-sm" onclick="saveTeacher(${i})">Save</button>
+                <button class="btn btn-secondary btn-sm" onclick="cancelTeacherEdit()">Cancel</button>
+              </div>
+            </td>
+          </tr>`
+        : `<tr>
+            <td>${t.id}</td>
+            <td>${t.name}</td>
+            <td>${t.contact}</td>
+            <td>${t.subject}</td>
+            <td>********</td>
+            <td>
+              <button class="btn btn-primary btn-sm me-1" onclick="editTeacherRow(${i})">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteTeacher(${i})">Delete</button>
+            </td>
+          </tr>`
+      ).join('')
+      : `<tr><td colspan="6" class="text-center text-muted">No teachers found.</td></tr>`;
+  }
+  function editTeacherRow(i) { editingTeacherIndex = i; renderTeacherTable(); }
+  async function saveTeacher(i) {
+    const t = teachers[i], newId = document.getElementById("editTeacherId").value.trim(),
+      newName = document.getElementById("editTeacherName").value.trim(),
+      newContact = document.getElementById("editTeacherContact").value.trim(),
+      newSubject = document.getElementById("editTeacherSubject").value.trim(),
+      newPassword = document.getElementById("editTeacherPassword").value.trim();
+    if (![newId, newName, newContact, newSubject, newPassword].every(Boolean)) return alert("All fields are required.");
+    if (newId !== t.id && teachers.some(te => te.id === newId)) return alert(`Teacher ID "${newId}" already exists.`);
+    showConfirm(`Save changes for teacher "${t.name}" (ID: ${t.id})?`, async () => {
+      await remove('teachers', t.id);
+      await save('teachers', { id: newId, name: newName, contact: newContact, subject: newSubject, password: newPassword });
+      teachers = await getAll('teachers');
+      editingTeacherIndex = null;
+      renderTeacherTable(); addLog("Teacher", `Teacher ${t.id} edited`); renderClasses();
+    });
+  }
+  function cancelTeacherEdit() { editingTeacherIndex = null; renderTeacherTable(); }
+  async function addTeacher() {
+    const id = document.getElementById("newTeacherID").value.trim(),
+      name = document.getElementById("newTeacherName").value.trim(),
+      contact = document.getElementById("newTeacherContact").value.trim(),
+      subject = document.getElementById("newTeacherSubject").value.trim(),
+      password = document.getElementById("newTeacherPassword").value.trim();
+    if (![id, name, contact, subject, password].every(Boolean)) return alert("Please fill all teacher fields.");
+    if (teachers.some(t => t.id === id)) return alert(`Teacher ID "${id}" already exists.`);
+    showConfirm(`Add teacher "${name}" (ID: ${id})?`, async () => {
+      await save('teachers', { id, name, contact, subject, password });
+      teachers = await getAll('teachers');
+      ["newTeacherID", "newTeacherName", "newTeacherContact", "newTeacherSubject", "newTeacherPassword"].forEach(id => document.getElementById(id).value = "");
+      renderTeacherTable(); addLog("Teacher", `Teacher ${id} (${name}) added`); renderClasses();
+    });
+  }
+  async function deleteTeacher(i) {
+    const t = teachers[i];
+    showConfirm(`Delete teacher "${t.name}" (ID: ${t.id})? This action cannot be undone.`, async () => {
+      await remove('teachers', t.id);
+      teachers = await getAll('teachers');
+      renderTeacherTable(); addLog("Teacher", `Teacher ${t.id} (${t.name}) deleted`); renderClasses();
+    });
+  }
+
+  // --- Logs CRUD ---
+  async function renderLogs() {
+    const logsList = document.getElementById("logsList"),
+      filterDate = document.getElementById("logFilterDate")?.value,
+      filterType = document.getElementById("logTypeFilter")?.value,
+      filterClass = document.getElementById("logClassFilter")?.value;
+    let filtered = logs;
+    if (filterDate) filtered = filtered.filter(log => log.date === filterDate);
+    if (filterType) filtered = filtered.filter(log => log.type === filterType);
+    if (filterClass) filtered = filtered.filter(log => log.message.includes(filterClass));
+    logsList.innerHTML = filtered.length
+      ? filtered.sort((a, b) => b.date.localeCompare(a.date)).map(log =>
+        `<li class="list-group-item"><span class="badge bg-info me-2">${log.type}</span> [${log.date}] ${log.message}</li>`
+      ).join('')
+      : `<li class="list-group-item text-center text-muted">No logs for this selection.</li>`;
+  }
+  async function addLog(type, message) {
+    await save('logs', { date: new Date().toISOString().slice(0, 10), type, message });
+    logs = await getAll('logs'); renderLogs();
+  }
+
+  // --- Confirm Modal ---
+  function showConfirm(msg, onConfirm) {
+    document.getElementById("confirmModalMsg").textContent = msg;
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    const okBtn = document.getElementById("confirmModalOk");
+    okBtn.onclick = null; okBtn.onclick = function() {
+      modal.hide();
+      onConfirm();
+    };
+    modal.show();
+  }
+
+  // ---- Modal/Filter Initialization ----
+  document.getElementById("studentsModal").addEventListener("show.bs.modal", function() {
+    populateStudentClassFilter();
+    populateNewStudentClassDropdown();
+    renderStudentTable();
+  });
+  document.getElementById("studentClassFilter").addEventListener("change", renderStudentTable);
+  document.getElementById("teachersModal").addEventListener("show.bs.modal", renderTeacherTable);
+  document.getElementById("logsModal").addEventListener("show.bs.modal", function() {
+    populateLogClassFilter();
+    renderLogs();
+  });
+  document.getElementById("logFilterDate").addEventListener("change", renderLogs);
+  document.getElementById("logTypeFilter").addEventListener("change", renderLogs);
+  document.getElementById("logClassFilter").addEventListener("change", renderLogs);
+
+  // ---- App Ready ----
+  window.onload = loadAllData;
+
   </script>
 </body>
-</html> 
+</html>

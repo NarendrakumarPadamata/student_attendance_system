@@ -1,0 +1,23 @@
+{
+  "name": "student_attendance_system",
+  "version": "1.0.0",
+  "description": "A web-based attendance management system designed for teachers to mark daily attendance efficiently and for students to view their attendance reports. The system supports role-based access, secure holiday marking with teacher password verification, and logging of write actions.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NarendrakumarPadamata/student_attendance_system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NarendrakumarPadamata/student_attendance_system/issues"
+  },
+  "homepage": "https://github.com/NarendrakumarPadamata/student_attendance_system#readme",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

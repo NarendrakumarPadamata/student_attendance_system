@@ -119,23 +119,58 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Sample Attendance Data
-    const attendanceRecords = [
-      { date: "2025-06-16", name: "Alice", status: "Present" },
-      { date: "2025-06-16", name: "Bob", status: "Absent" },
-      { date: "2025-06-17", name: "Alice", status: "Present" },
-      { date: "2025-06-17", name: "Bob", status: "Present" },
-      { date: "2025-06-18", name: "Alice", status: "Absent" },
-      { date: "2025-06-18", name: "Bob", status: "Present" }
-    ];
+    // === IndexedDB Setup ===
+    let db;
+    const DB_NAME = 'attendanceDB', DB_VERSION = 4;
 
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = function (evt) {
+          db = evt.target.result;
+          ["classes", "students", "teachers", "holidays", "attendance", "logs"].forEach(store => {
+            if (!db.objectStoreNames.contains(store)) {
+              db.createObjectStore(store, { keyPath: store === 'holidays' ? 'date' : 'id', autoIncrement: store === 'attendance' || store === 'logs' });
+            }
+          });
+        };
+        req.onsuccess = evt => { db = evt.target.result; resolve(db); };
+        req.onerror = evt => reject(evt.target.error);
+      });
+    }
+
+    function getAll(store) {
+      return openDB().then(() =>
+        new Promise((res, rej) => {
+          const tx = db.transaction([store], "readonly"),
+                s = tx.objectStore(store),
+                r = s.getAll();
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        })
+      );
+    }
+
+    // --- Utility Functions ---
     function updateDateTime() {
       const now = new Date();
-      document.getElementById("date-time").textContent = 
+      document.getElementById("date-time").textContent =
         `${now.toLocaleDateString()} | ${now.toLocaleTimeString()}`;
     }
     updateDateTime();
     setInterval(updateDateTime, 1000);
+
+    // --- Attendance Report Rendering ---
+    let attendanceRecords = [];
+
+    async function loadAttendanceRecords() {
+      attendanceRecords = await getAll('attendance');
+      renderAttendanceReport(document.getElementById("dateFilter").value);
+      updateStrengthDisplays();
+      renderAttendanceDoughnutChart();
+      renderDailyLineChart();
+    }
 
     function renderAttendanceReport(filterDate = "") {
       const tbody = document.getElementById("attendanceReportTable");
@@ -147,7 +182,7 @@
           row.classList.add("text-center");
           row.innerHTML = `
             <td>${record.date}</td>
-            <td>${record.name}</td>
+            <td>${record.name || record.studentname || record.studentid || ""}</td>
             <td>${record.status}</td>
           `;
           tbody.appendChild(row);
@@ -201,7 +236,7 @@
               font: { weight: 'bold', size: 13 },
               formatter: (value, context) => {
                 const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                return `${((value / total) * 100).toFixed(1)}%`;
+                return total ? `${((value / total) * 100).toFixed(1)}%` : "0%";
               }
             },
             tooltip: {
@@ -209,7 +244,7 @@
                 label: (ctx) => {
                   const value = ctx.parsed;
                   const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                  return `${ctx.label}: ${value} (${((value / total) * 100).toFixed(1)}%)`;
+                  return `${ctx.label}: ${value} (${total ? ((value / total) * 100).toFixed(1) : 0}%)`;
                 }
               }
             }
@@ -308,15 +343,12 @@
         `Previous Day's Strength (${getPrevDate()}): ${getStrength(getPrevDate())}`;
     }
 
-    // Fetch teacher & class info from backend
-    fetch('/api/getClassInfo') // Replace with actual API
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('username').textContent = data.teacher;
-        document.getElementById('class-id').textContent = data.classId;
-      });
+    // Set demo teacher/class or fetch from DB if needed
+    document.getElementById('username').textContent = "Demo Teacher";
+    document.getElementById('class-id').textContent = "Demo Class";
 
-    window.addEventListener("DOMContentLoaded", () => {
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadAttendanceRecords();
       const recentDate = getMostRecentDate();
       if (recentDate) {
         document.getElementById("dateFilter").value = recentDate;
@@ -329,28 +361,5 @@
       renderDailyLineChart();
     });
   </script>
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBiMw2jFky9giT5QaTgdnaHEmJDZMzxkXY",
-    authDomain: "student-attendance-syste-bf611.firebaseapp.com",
-    projectId: "student-attendance-syste-bf611",
-    storageBucket: "student-attendance-syste-bf611.firebasestorage.app",
-    messagingSenderId: "158541624825",
-    appId: "1:158541624825:web:f3189d8a7a43c4eae57928",
-    measurementId: "G-KD9DKSYBK3"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </body>
 </html>

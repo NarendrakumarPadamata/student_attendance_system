@@ -3,21 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Teacher - login</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-    integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT"
-    crossorigin="anonymous"
-  />
-  
+  <title>Teacher - Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
   <style>
     body {
       background-color: #f6f6f6;
       font-family: 'Playfair Display', serif;
       margin: 0;
     }
-
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -28,19 +22,15 @@
       color: #333;
       flex-wrap: wrap;
     }
-
     .top-bar > div {
       margin: 4px 0;
     }
-
     header {
       background-color: #023246;
       color: #f6f6f6;
       padding: 12px 0;
       text-align: center;
       font-size: 24px;
-    }
-    header, .top-bar {
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     #date-time {
@@ -48,107 +38,162 @@
       color: #555;
     }
     .option-box {
-  background-color: #fff;
-  border: 1px solid #ccc;
-  padding: 24px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
-}
-
-.option-box:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-    .option-box {
-  background-color: #ffffff;
-  border: 1px solid #ccc;
-  padding: 24px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  color: #023246;
-  cursor: pointer;
-}
-
-.option-box i {
-  font-size: 3rem;
-  color: #023246;
-  transition: all 0.3s ease;
-  display: inline-block;
-}
-
-.option-box:hover {
-  background-color: #023246;
-  color: #ffffff;
-  transform: translateY(-6px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-}
-
-.option-box:hover i {
-  color: #ffffff;
-  transform: rotate(10deg) scale(1.1);
-}
-
-.option-box .btn {
-  margin-top: 10px;
-}
+      background-color: #fff;
+      border: 1px solid #ccc;
+      padding: 24px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease;
+      color: #023246;
+      cursor: pointer;
+    }
+    .option-box:hover {
+      background-color: #023246;
+      color: #ffffff;
+      transform: translateY(-6px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+    .option-box i {
+      font-size: 3rem;
+      color: #023246;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+    .option-box:hover i {
+      color: #ffffff;
+      transform: rotate(10deg) scale(1.1);
+    }
+    .option-box .btn {
+      margin-top: 10px;
+    }
     .equal-height {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-}
-
-
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
   </style>
 </head>
 
+<body>
   <header>
     Smart Attendance System
   </header>
-
-<body>
 
   <div class="top-bar">
     <div>
       <strong>Teacher:</strong> <span id="username"></span> |
       <strong>Class ID:</strong> <span id="class-id"></span>
     </div>
-    
     <div id="date-time" class="text-end"></div>
   </div>
-<div class="container my-5">
-  <div class="row g-4 justify-content-center">
-    <div class="col-md-4 d-flex">
+  <div class="container my-5">
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-4 d-flex">
         <div class="option-box equal-height w-100">
-        <i class="bi bi-check-square-fill mb-3"></i>
-        <h4>Mark Attendance</h4>
-        <p>Start marking today's attendance.</p>
-        <a href="attendance.html" class="btn btn-outline-primary">Go</a>
+          <i class="bi bi-check-square-fill mb-3"></i>
+          <h4>Mark Attendance</h4>
+          <p>Start marking today's attendance.</p>
+          <button onclick="goToAttendance()" class="btn btn-outline-primary">Go</button>
+        </div>
       </div>
-    </div>
-    <div class="col-md-4 d-flex">
+      <div class="col-md-4 d-flex">
         <div class="option-box equal-height w-100">
-        <i class="bi bi-file-earmark-bar-graph-fill mb-3"></i>
-        <h4>View Attendance Report</h4>
-        <p>Check class attendance reports.</p>
-        <a href="report.html" class="btn btn-outline-primary">Go</a>
+          <i class="bi bi-file-earmark-bar-graph-fill mb-3"></i>
+          <h4>View Attendance Report</h4>
+          <p>Check class attendance reports.</p>
+          <a href="report.html" class="btn btn-outline-primary">Go</a>
+        </div>
       </div>
     </div>
   </div>
-</div>
-  <script>
-    function updateDateTime() {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString();
-      const timeStr = now.toLocaleTimeString();
-      document.getElementById("date-time").textContent = `${dateStr} | ${timeStr}`;
-    }
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-  </script>
+
+<script>
+// ============ IndexedDB helpers (same as admin) ============
+let db;
+const DB_NAME = 'attendanceDB', DB_VERSION = 4;
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = evt => {
+      db = evt.target.result;
+      ['classes','students','teachers','holidays'].forEach(store =>
+        !db.objectStoreNames.contains(store) && db.createObjectStore(store, {keyPath: store === 'holidays' ? 'date' : 'id'})
+      );
+      if (!db.objectStoreNames.contains('logs')) db.createObjectStore('logs', {autoIncrement:true});
+    };
+    req.onsuccess = evt => { db = evt.target.result; resolve(db); };
+    req.onerror = evt => reject(evt.target.error);
+  });
+}
+function getAll(store) {
+  return openDB().then(() =>
+    new Promise((resolve, reject) => {
+      const tx = db.transaction([store], "readonly"),
+        s = tx.objectStore(store), r = s.getAll();
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    })
+  );
+}
+
+// ==== Query parameter helpers ====
+function getQueryParam(param) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(param);
+}
+
+// ==== Page logic ====
+async function loadTeacherInfo() {
+  // Use query params (if present) or fallback to localStorage
+  let teacherId = getQueryParam('teacherid') || localStorage.getItem('teacherid');
+  let classId = getQueryParam('classid') || localStorage.getItem('classid');
+
+  if (!teacherId || !classId) {
+    alert("Missing teacher ID or class ID. Please login again.");
+    // Optionally redirect to login.html
+    window.location.href = "index.html";
+    return;
+  }
+
+  // Get teacher info from DB (optional: show real teacher name)
+  await openDB();
+  const teachers = await getAll('teachers');
+  const teacher = teachers.find(t => (t.id || t.teacherid) === teacherId);
+
+  document.getElementById('username').textContent = teacher ? (teacher.name || teacher.id || teacherId) : teacherId;
+  document.getElementById('class-id').textContent = classId;
+
+  // --- You may fetch students (if needed for attendance) ---
+  // const students = (await getAll('students')).filter(stu => (stu.classId || stu.classid) === classId);
+  // You can pass students to next page or show on this page as you wish.
+}
+
+// ==== Mark Attendance navigation ====
+function goToAttendance() {
+  // Pick from query params or localStorage for reliability
+  let teacherId = getQueryParam('teacherid') || localStorage.getItem('teacherid');
+  let classId = getQueryParam('classid') || localStorage.getItem('classid');
+  if (!teacherId || !classId) {
+    alert("Missing teacher or class info.");
+    return;
+  }
+  window.location.href = `attendance.html?teacherid=${encodeURIComponent(teacherId)}&classid=${encodeURIComponent(classId)}`;
+}
+
+// ===== Live Date/Time =====
+function updateDateTime() {
+  document.getElementById("date-time").textContent = new Date().toLocaleString();
+}
+
+// ===== On load ======
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadTeacherInfo();
+  updateDateTime();
+  setInterval(updateDateTime, 60000);
+});
+</script>
 </body>
 </html>

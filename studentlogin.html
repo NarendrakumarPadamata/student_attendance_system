@@ -157,156 +157,145 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
   <script>
-    const attendanceRecords = [
-      { studentId: "S101", name: "Alice", date: "2025-06-13", status: "Present" },
-      { studentId: "S102", name: "Bob", date: "2025-06-13", status: "Absent" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-13", status: "Present" },
-      { studentId: "S101", name: "Alice", date: "2025-06-14", status: "Present" },
-      { studentId: "S102", name: "Bob", date: "2025-06-14", status: "Present" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-14", status: "Holiday" },
-      { studentId: "S101", name: "Alice", date: "2025-06-15", status: "Holiday" },
-      { studentId: "S102", name: "Bob", date: "2025-06-15", status: "Holiday" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-15", status: "Holiday" },
-      { studentId: "S101", name: "Alice", date: "2025-06-16", status: "Present" },
-      { studentId: "S102", name: "Bob", date: "2025-06-16", status: "Present" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-16", status: "Absent" },
-      { studentId: "S101", name: "Alice", date: "2025-06-17", status: "Absent" },
-      { studentId: "S102", name: "Bob", date: "2025-06-17", status: "Present" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-17", status: "Present" },
-      { studentId: "S101", name: "Alice", date: "2025-06-18", status: "Present" },
-      { studentId: "S102", name: "Bob", date: "2025-06-18", status: "Absent" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-18", status: "Present" },
-      { studentId: "S101", name: "Alice", date: "2025-06-19", status: "Present" },
-      { studentId: "S102", name: "Bob", date: "2025-06-19", status: "Present" },
-      { studentId: "S103", name: "Charlie", date: "2025-06-19", status: "Holiday" }
-    ];
+  // === IndexedDB Setup ===
+  let db;
+  const DB_NAME = 'attendanceDB', DB_VERSION = 4;
 
-    document.getElementById("searchBtn").addEventListener("click", function () {
-      const inputId = document.getElementById("studentIdInput").value.trim();
-      const detailsDiv = document.getElementById("studentDetails");
-      if (!inputId) {
-        detailsDiv.innerHTML = "<div class='alert alert-warning w-100 text-center'>Please enter a Student ID.</div>";
-        return;
-      }
-
-      const studentRecords = attendanceRecords.filter(r => r.studentId === inputId);
-      if (studentRecords.length === 0) {
-  detailsDiv.innerHTML = "<div class='alert alert-danger w-100 text-center'>No records found for this Student ID.</div>";
-  document.getElementById("calendar").innerHTML = ""; // Clear the calendar
-  return;
-}
-
-
-      const presents = studentRecords.filter(r => r.status === "Present").length;
-      const absents = studentRecords.filter(r => r.status === "Absent").length;
-      const workingDays = presents + absents;
-      const overallPercent = workingDays ? ((presents / workingDays) * 100).toFixed(1) : 0;
-
-      const monthly = {};
-      studentRecords.forEach(r => {
-        const month = r.date.slice(0, 7);
-        if (!monthly[month]) monthly[month] = { total: 0, present: 0 };
-        if (r.status !== "Holiday") monthly[month].total++;
-        if (r.status === "Present") monthly[month].present++;
-      });
-
-      let monthlyHtml = "";
-      for (const [month, data] of Object.entries(monthly)) {
-        const percent = ((data.present / data.total) * 100).toFixed(1);
-        monthlyHtml += `<li>${month}: <strong>${percent}%</strong> (${data.present}/${data.total})</li>`;
-      }
-
-      const latest = studentRecords[studentRecords.length - 1];
-
-      detailsDiv.innerHTML = `
-        <div class="card shadow" style="max-width: 450px;">
-          <div class="card-body">
-            <h5 class="card-title mb-2">${latest.name} <span class="badge bg-secondary">ID: ${latest.studentId}</span></h5>
-            <ul class="list-group list-group-flush mb-3">
-              <li class="list-group-item">Total Working Days: <strong>${workingDays}</strong></li>
-              <li class="list-group-item">Presents: <strong class="text-success">${presents}</strong></li>
-              <li class="list-group-item">Absents: <strong class="text-danger">${absents}</strong></li>
-              <li class="list-group-item">Overall Attendance: <strong>${overallPercent}%</strong></li>
-              <li class="list-group-item">
-                Required Attendance:
-                <strong class="${overallPercent >= 75 ? 'text-success' : 'text-danger'}">
-                  ${overallPercent >= 75 ? 'Met (≥ 75%)' : 'Not Met (< 75%)'}
-                </strong>
-              </li>
-            </ul>
-            <div>
-              <strong>Monthly Attendance:</strong>
-              <ul class="mb-0">${monthlyHtml}</ul>
-            </div>            
-        </div>
-      `;
-     
-      const calendarEl = document.getElementById("calendar");
-      const calendarEvents = studentRecords.map(record => {
-        let color = "";
-        if (record.status === "Present") color = "#198754";
-        else if (record.status === "Absent") color = "#dc3545";
-        else if (record.status === "Holiday") color = "#fd7e14";
-      
-        return {
-          title: record.status,
-          start: record.date,
-          allDay: true,
-          backgroundColor: color,
-          borderColor: color
-        };
-      });
-      
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-       
-        initialView: 'dayGridMonth',
-        height: 550,
-        initialDate: studentRecords[0].date,
-        locale: 'en', 
-        themeSystem: 'bootstrap',
-        selectable: true,
-        events: calendarEvents,
-        headerToolbar: {
-          left: 'prev,next today',
-          center: '',
-          right: 'title'
-        }
-      });
-      calendar.render();
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      if (db) return resolve(db);
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function (evt) {
+        db = evt.target.result;
+        ["classes", "students", "teachers", "holidays", "attendance", "logs"].forEach(store => {
+          if (!db.objectStoreNames.contains(store)) {
+            db.createObjectStore(store, { keyPath: store === 'holidays' ? 'date' : 'id', autoIncrement: store === 'attendance' || store === 'logs' });
+          }
+        });
+      };
+      req.onsuccess = evt => { db = evt.target.result; resolve(db); };
+      req.onerror = evt => reject(evt.target.error);
     });
+  }
 
-    function updateDateTime() {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString();
-      const timeStr = now.toLocaleTimeString();
-      document.getElementById("date-time").textContent = `${dateStr} | ${timeStr}`;
+  function getAll(store) {
+    return openDB().then(() =>
+      new Promise((res, rej) => {
+        const tx = db.transaction([store], "readonly"),
+              s = tx.objectStore(store),
+              r = s.getAll();
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      })
+    );
+  }
+
+  document.getElementById("searchBtn").addEventListener("click", async function () {
+    const inputId = document.getElementById("studentIdInput").value.trim();
+    const detailsDiv = document.getElementById("studentDetails");
+    if (!inputId) {
+      detailsDiv.innerHTML = "<div class='alert alert-warning w-100 text-center'>Please enter a Student ID.</div>";
+      document.getElementById("calendar").innerHTML = "";
+      return;
     }
 
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-  </script>
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+    await openDB();
+    const attendanceRecords = (await getAll('attendance')).filter(r => (r.studentid || r.studentId || r.id) === inputId);
+    const students = await getAll('students');
+    const student = students.find(s => (s.id || s.studentId) === inputId);
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBiMw2jFky9giT5QaTgdnaHEmJDZMzxkXY",
-    authDomain: "student-attendance-syste-bf611.firebaseapp.com",
-    projectId: "student-attendance-syste-bf611",
-    storageBucket: "student-attendance-syste-bf611.firebasestorage.app",
-    messagingSenderId: "158541624825",
-    appId: "1:158541624825:web:f3189d8a7a43c4eae57928",
-    measurementId: "G-KD9DKSYBK3"
-  };
+    if (attendanceRecords.length === 0 || !student) {
+      detailsDiv.innerHTML = "<div class='alert alert-danger w-100 text-center'>No records found for this Student ID.</div>";
+      document.getElementById("calendar").innerHTML = "";
+      return;
+    }
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+    const presents = attendanceRecords.filter(r => r.status === "Present").length;
+    const absents = attendanceRecords.filter(r => r.status === "Absent").length;
+    const workingDays = presents + absents;
+    const overallPercent = workingDays ? ((presents / workingDays) * 100).toFixed(1) : 0;
+
+    const monthly = {};
+    attendanceRecords.forEach(r => {
+      const month = r.date.slice(0, 7);
+      if (!monthly[month]) monthly[month] = { total: 0, present: 0 };
+      if (r.status !== "Holiday") monthly[month].total++;
+      if (r.status === "Present") monthly[month].present++;
+    });
+
+    let monthlyHtml = "";
+    for (const [month, data] of Object.entries(monthly)) {
+      const percent = data.total ? ((data.present / data.total) * 100).toFixed(1) : "0.0";
+      monthlyHtml += `<li>${month}: <strong>${percent}%</strong> (${data.present}/${data.total})</li>`;
+    }
+
+    const latest = attendanceRecords[attendanceRecords.length - 1];
+
+    detailsDiv.innerHTML = `
+      <div class="card shadow" style="max-width: 450px;">
+        <div class="card-body">
+          <h5 class="card-title mb-2">${student.name} <span class="badge bg-secondary">ID: ${inputId}</span></h5>
+          <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item">Total Working Days: <strong>${workingDays}</strong></li>
+            <li class="list-group-item">Presents: <strong class="text-success">${presents}</strong></li>
+            <li class="list-group-item">Absents: <strong class="text-danger">${absents}</strong></li>
+            <li class="list-group-item">Overall Attendance: <strong>${overallPercent}%</strong></li>
+            <li class="list-group-item">
+              Required Attendance:
+              <strong class="${overallPercent >= 75 ? 'text-success' : 'text-danger'}">
+                ${overallPercent >= 75 ? 'Met (≥ 75%)' : 'Not Met (< 75%)'}
+              </strong>
+            </li>
+          </ul>
+          <div>
+            <strong>Monthly Attendance:</strong>
+            <ul class="mb-0">${monthlyHtml}</ul>
+          </div>            
+      </div>
+    `;
+
+    const calendarEl = document.getElementById("calendar");
+    const calendarEvents = attendanceRecords.map(record => {
+      let color = "";
+      if (record.status === "Present") color = "#198754";
+      else if (record.status === "Absent") color = "#dc3545";
+      else if (record.status === "Holiday") color = "#fd7e14";
+
+      return {
+        title: record.status,
+        start: record.date,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color
+      };
+    });
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      height: 550,
+      initialDate: attendanceRecords[0].date,
+      locale: 'en',
+      themeSystem: 'bootstrap',
+      selectable: true,
+      events: calendarEvents,
+      headerToolbar: {
+        left: 'prev,next today',
+        center: '',
+        right: 'title'
+      }
+    });
+    calendar.render();
+  });
+
+  function updateDateTime() {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString();
+    const timeStr = now.toLocaleTimeString();
+    document.getElementById("date-time").textContent = `${dateStr} | ${timeStr}`;
+  }
+
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
 </script>
 </body>
 </html>
