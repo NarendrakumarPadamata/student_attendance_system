@@ -112,7 +112,7 @@
 <script>
 // ============= IndexedDB HELPERS (MUST MATCH admin dashboard) =============
 let db;
-const DB_NAME = 'attendanceDB', DB_VERSION = 4; // ✅ Fixed by using version 2
+const DB_NAME = 'attendanceDB', DB_VERSION = 6; // ✅ Fixed by using version 2
 function openDB() {
   return new Promise((resolve, reject) => {
     if (db) return resolve(db);
@@ -281,4 +281,3 @@ if (localStorage.getItem("userType") === "student") {
 </footer>
 </body>
 </html>
-
