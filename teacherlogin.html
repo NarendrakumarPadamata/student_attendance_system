@@ -153,22 +153,25 @@ async function loadTeacherInfo() {
 
   if (!teacherId || !classId) {
     alert("Missing teacher ID or class ID. Please login again.");
-    // Optionally redirect to login.html
     window.location.href = "index.html";
     return;
   }
 
-  // Get teacher info from DB (optional: show real teacher name)
   await openDB();
+  // Get teacher info from DB
   const teachers = await getAll('teachers');
-  const teacher = teachers.find(t => (t.id || t.teacherid) === teacherId);
+  const teacher = teachers.find(t => (t.teacherid || t.id) === teacherId);
+  let teacherDisplay = teacherId;
+  if (teacher && teacher.name) teacherDisplay = `${teacher.name} (${teacherId})`;
 
-  document.getElementById('username').textContent = teacher ? (teacher.name || teacher.id || teacherId) : teacherId;
-  document.getElementById('class-id').textContent = classId;
+  // Get class info from DB
+  const classes = await getAll('classes');
+  const cls = classes.find(c => (c.classid || c.id) === classId);
+  let classDisplay = classId;
+  if (cls && cls.name) classDisplay = `${cls.name} (${classId})`;
 
-  // --- You may fetch students (if needed for attendance) ---
-  // const students = (await getAll('students')).filter(stu => (stu.classId || stu.classid) === classId);
-  // You can pass students to next page or show on this page as you wish.
+  document.getElementById('username').textContent = teacherDisplay;
+  document.getElementById('class-id').textContent = classDisplay;
 }
 
 // ==== Mark Attendance navigation ====
