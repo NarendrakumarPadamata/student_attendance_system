@@ -131,133 +131,200 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // === IndexedDB Setup ===
-        let db;
-        const DB_NAME = 'attendanceDB',
-            DB_VERSION = 6;
+<script>
+    // === IndexedDB Setup ===
+    let db;
+    const DB_NAME = 'attendanceDB',
+        DB_VERSION = 6;
 
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                if (db) return resolve(db);
-                const req = indexedDB.open(DB_NAME, DB_VERSION);
-                req.onupgradeneeded = evt => {
-                    db = evt.target.result;
-                    ["classes", "students", "teachers", "holidays", "attendance", "logs"].forEach(store => {
-                        if (!db.objectStoreNames.contains(store)) {
-                            db.createObjectStore(store, {
-                                keyPath: store === 'holidays' ? 'date' : 'id',
-                                autoIncrement: store === 'attendance' || store === 'logs'
-                            });
-                        }
-                    });
-                };
-                req.onsuccess = evt => {
-                    db = evt.target.result;
-                    resolve(db);
-                };
-                req.onerror = evt => reject(evt.target.error);
-            });
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            if (db) return resolve(db);
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = evt => {
+                db = evt.target.result;
+                ["classes", "students", "teachers", "holidays", "attendance", "logs"].forEach(store => {
+                    if (!db.objectStoreNames.contains(store)) {
+                        db.createObjectStore(store, {
+                            keyPath: store === 'holidays' ? 'date' : 'id',
+                            autoIncrement: store === 'attendance' || store === 'logs'
+                        });
+                    }
+                });
+            };
+            req.onsuccess = evt => {
+                db = evt.target.result;
+                resolve(db);
+            };
+            req.onerror = evt => reject(evt.target.error);
+        });
+    }
+
+    function getAll(store) {
+        return openDB().then(() =>
+            new Promise((res, rej) => {
+                const tx = db.transaction([store], "readonly"),
+                    s = tx.objectStore(store),
+                    r = s.getAll();
+                r.onsuccess = () => res(r.result);
+                r.onerror = () => rej(r.error);
+            })
+        );
+    }
+
+    function save(store, value) {
+        return openDB().then(() =>
+            new Promise((res, rej) => {
+                const tx = db.transaction([store], "readwrite"),
+                    s = tx.objectStore(store),
+                    r = s.put(value);
+                r.onsuccess = () => res(true);
+                r.onerror = () => rej(r.error);
+            })
+        );
+    }
+
+    function add(store, value) {
+        return openDB().then(() =>
+            new Promise((res, rej) => {
+                const tx = db.transaction([store], "readwrite"),
+                    s = tx.objectStore(store),
+                    r = s.add(value);
+                r.onsuccess = () => res(true);
+                r.onerror = () => rej(r.error);
+            })
+        );
+    }
+
+    function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+    }
+
+    // --- Utility Functions ---
+    function updateDateTime() {
+        const now = new Date();
+        document.getElementById("date-time").textContent =
+            `${now.toLocaleDateString()} | ${now.toLocaleTimeString()}`;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    // Modified: Get teacherId and classId from URL or localStorage, else redirect
+    function getTeacherId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tid = urlParams.get("teacherid");
+        if (tid) {
+            localStorage.setItem('teacherid', tid);
+            return tid;
+        }
+        const storedTid = localStorage.getItem('teacherid');
+        if (storedTid) return storedTid;
+        return null;
+    }
+
+    function getClassId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cid = urlParams.get("classid");
+        if (cid) {
+            localStorage.setItem('classid', cid);
+            return cid;
+        }
+        const storedCid = localStorage.getItem('classid');
+        if (storedCid) return storedCid;
+        return null;
+    }
+
+    // --- Set teacher and class info from DB ---
+    async function setTeacherAndClassInfo() {
+        await openDB();
+
+        const teacherId = getTeacherId();
+        const classId = getClassId();
+
+        if (!teacherId || !classId) {
+            alert("Missing teacher ID or class ID. Please login again.");
+            window.location.href = "index.html";
+            return;
         }
 
-        function getAll(store) {
-            return openDB().then(() =>
-                new Promise((res, rej) => {
-                    const tx = db.transaction([store], "readonly"),
-                        s = tx.objectStore(store),
-                        r = s.getAll();
-                    r.onsuccess = () => res(r.result);
-                    r.onerror = () => rej(r.error);
-                })
-            );
-        }
+        // Get teacher name from DB
+        let teacherName = teacherId;
+        const teachers = await getAll('teachers');
+        const teacher = teachers.find(t => t.teacherid === teacherId || t.id === teacherId);
+        if (teacher && teacher.name) teacherName = `${teacher.name} (${teacherId})`;
 
-        function save(store, value) {
-            return openDB().then(() =>
-                new Promise((res, rej) => {
-                    const tx = db.transaction([store], "readwrite"),
-                        s = tx.objectStore(store),
-                        r = s.put(value);
-                    r.onsuccess = () => res(true);
-                    r.onerror = () => rej(r.error);
-                })
-            );
-        }
+        // Get class name from DB
+        let className = classId;
+        const classes = await getAll('classes');
+        const cls = classes.find(c => c.classid === classId || c.id === classId);
+        if (cls && cls.name) className = `${cls.name} (${classId})`;
 
-        function add(store, value) {
-            return openDB().then(() =>
-                new Promise((res, rej) => {
-                    const tx = db.transaction([store], "readwrite"),
-                        s = tx.objectStore(store),
-                        r = s.add(value);
-                    r.onsuccess = () => res(true);
-                    r.onerror = () => rej(r.error);
-                })
-            );
-        }
+        document.getElementById('username').textContent = teacherName || "";
+        document.getElementById('class-id').textContent = className || "";
+    }
 
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
+    // Call this on page load
+    document.addEventListener("DOMContentLoaded", async () => {
+        await setTeacherAndClassInfo();
+        await loadHolidays();
+        await fetchAndRenderStudents();
+    });
 
-        function updateDateTime() {
-            document.getElementById("date-time").textContent = new Date().toLocaleString();
-        }
-        updateDateTime();
-        setInterval(updateDateTime, 1000);
+    // ========== Attendance Logic ==========
+    let holidays = [];
 
-        // ========== Attendance Logic ==========
-        let studentList = [];
-        let attendanceDate = new Date().toISOString().slice(0, 10);
-        let teacherName = null;
+    async function loadHolidays() {
+        holidays = await getAll('holidays');
+    }
 
-        async function fetchAndRenderStudents() {
-            try {
-                await openDB();
+    let studentList = [];
+    let attendanceDate = new Date().toISOString().slice(0, 10);
+    let teacherName = null;
 
-                const classId = getQueryParam("classid");
-                const teacherId = getQueryParam("teacherid");
+    async function fetchAndRenderStudents() {
+        try {
+            await openDB();
 
-                if (!classId || !teacherId) {
-                    console.error("Class ID or Teacher ID missing from URL parameters.");
-                    return;
-                }
+            const classId = getQueryParam("classid");
+            const teacherId = getQueryParam("teacherid");
 
-                document.getElementById("class-id").textContent = classId;
+            if (!classId || !teacherId) {
+                console.error("Class ID or Teacher ID missing from URL parameters.");
+                return;
+            }
 
-                const teachers = await getAll('teachers');
-                const teacher = teachers.find(t => t.teacherid === teacherId || t.id === teacherId);
+            const teachers = await getAll('teachers');
+            const teacher = teachers.find(t => t.teacherid === teacherId || t.id === teacherId);
 
-                if (!teacher) {
-                    console.error(`Teacher with ID ${teacherId} not found.`);
-                    return;
-                }
+            if (!teacher) {
+                console.error(`Teacher with ID ${teacherId} not found.`);
+                return;
+            }
 
-                teacherName = teacher.name;
-                document.getElementById("username").textContent = teacherName;
+            teacherName = teacher.name;
 
-                const allStudents = await getAll('students');
-                studentList = allStudents.filter(s => s.classid === classId || s.classId === classId);
+            const allStudents = await getAll('students');
+            studentList = allStudents.filter(s => s.classid === classId || s.classId === classId);
 
-                const attendanceAll = await getAll('attendance');
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yDate = yesterday.toISOString().slice(0, 10);
+            const attendanceAll = await getAll('attendance');
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yDate = yesterday.toISOString().slice(0, 10);
 
-                const tbody = document.getElementById("studentTable");
-                if (!studentList.length) {
-                    tbody.innerHTML =
-                        `<tr><td colspan="3" class="text-center text-muted">No students found for this class.</td></tr>`;
-                    return;
-                }
+            const tbody = document.getElementById("studentTable");
+            if (!studentList.length) {
+                tbody.innerHTML =
+                    `<tr><td colspan="3" class="text-center text-muted">No students found for this class.</td></tr>`;
+                return;
+            }
 
-                tbody.innerHTML = "";
-                for (let s of studentList) {
-                    const att = attendanceAll.slice().reverse().find(a =>
-                        a.studentid === (s.id || s.studentid) && a.date === yDate
-                    );
-                    tbody.innerHTML += `<tr class="text-center">
+            tbody.innerHTML = "";
+            for (let s of studentList) {
+                const att = attendanceAll.slice().reverse().find(a =>
+                    a.studentid === (s.id || s.studentid) && a.date === yDate
+                );
+                tbody.innerHTML += `<tr class="text-center">
           <td>${s.name}</td>
           <td>${att ? att.status : '<span class="text-muted">-</span>'}</td>
           <td>
@@ -267,114 +334,139 @@
               data-name="${s.name}">
           </td>
         </tr>`;
-                }
-
-            } catch (error) {
-                console.error('Error fetching and rendering students:', error);
             }
+
+        } catch (error) {
+            console.error('Error fetching and rendering students:', error);
+        }
+    }
+
+    // Select all toggle
+    document.getElementById("selectAllCheckbox").addEventListener("change", function () {
+        const allCheckboxes = document.querySelectorAll(".student-checkbox");
+        allCheckboxes.forEach(cb => cb.checked = this.checked);
+    });
+
+    document.addEventListener("change", function (e) {
+        if (e.target.classList.contains('student-checkbox')) {
+            const all = document.querySelectorAll(".student-checkbox");
+            const selected = [...all].every(cb => cb.checked);
+            document.getElementById("selectAllCheckbox").checked = !!all.length && selected;
+        }
+    });
+
+    let onConfirmSubmit = null;
+
+    document.getElementById("attendanceForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        const modal = new bootstrap.Modal(document.getElementById("submitConfirmModal"));
+        onConfirmSubmit = submitAttendance;
+        modal.show();
+    });
+
+    document.getElementById("confirmSubmitBtn").addEventListener("click", async function () {
+        if (onConfirmSubmit) await onConfirmSubmit();
+        const modal = bootstrap.Modal.getInstance(document.getElementById("submitConfirmModal"));
+        modal.hide();
+        setTimeout(() => document.body.focus(), 0);
+    });
+
+    async function submitAttendance() {
+        await openDB();
+        const teacherId = getQueryParam("teacherid");
+        const classId = getQueryParam("classid");
+        const today = new Date().toISOString().slice(0, 10);
+
+        // --- Block attendance if today is a holiday ---
+        const allHolidays = await getAll('holidays');
+        const isTodayHoliday = allHolidays.some(h => h.date === today);
+        if (isTodayHoliday) {
+            alert("Attendance cannot be marked on a holiday.");
+            return;
+        }
+        // --- End block ---
+
+        // Check if attendance already exists for this class and date
+        const allAttendance = await getAll('attendance');
+        const alreadyMarked = allAttendance.some(
+            a => (a.classid === classId || a.classId === classId) && a.date === today
+        );
+
+        if (alreadyMarked) {
+            alert("Attendance for this class has already been marked today. You cannot submit again.");
+            return;
         }
 
-        document.addEventListener("DOMContentLoaded", fetchAndRenderStudents);
+        const attendanceData = [...document.querySelectorAll(".student-checkbox")].map(cb => ({
+            studentid: cb.dataset.studentid,
+            classid: classId,
+            status: cb.checked ? "Present" : "Absent",
+            markedby: teacherId,
+            markedby_name: teacherName,
+            date: today
+        }));
 
-        // Select all toggle
-        document.getElementById("selectAllCheckbox").addEventListener("change", function () {
-            const allCheckboxes = document.querySelectorAll(".student-checkbox");
-            allCheckboxes.forEach(cb => cb.checked = this.checked);
-        });
+        try {
+            // Remove existing attendance for today (if any)
+            const attAll = await getAll('attendance');
+            const tx = db.transaction(['attendance'], "readwrite");
+            const store = tx.objectStore('attendance');
 
-        document.addEventListener("change", function (e) {
-            if (e.target.classList.contains('student-checkbox')) {
-                const all = document.querySelectorAll(".student-checkbox");
-                const selected = [...all].every(cb => cb.checked);
-                document.getElementById("selectAllCheckbox").checked = !!all.length && selected;
-            }
-        });
-
-        let onConfirmSubmit = null;
-
-        document.getElementById("attendanceForm").addEventListener("submit", function (e) {
-            e.preventDefault();
-            const modal = new bootstrap.Modal(document.getElementById("submitConfirmModal"));
-            onConfirmSubmit = submitAttendance;
-            modal.show();
-        });
-
-        document.getElementById("confirmSubmitBtn").addEventListener("click", async function () {
-            if (onConfirmSubmit) await onConfirmSubmit();
-            const modal = bootstrap.Modal.getInstance(document.getElementById("submitConfirmModal"));
-            modal.hide();
-            setTimeout(() => document.body.focus(), 0); // Add this line
-        });
-
-        async function submitAttendance() {
-            await openDB();
-            const teacherId = getQueryParam("teacherid") || "teacher1";
-            const classId = getQueryParam("classid") || "class1";
-            const today = attendanceDate;
-
-            const attendanceData = [...document.querySelectorAll(".student-checkbox")].map(cb => ({
-                studentid: cb.dataset.studentid,
-                classid: classId,
-                status: cb.checked ? "Present" : "Absent",
-                markedby: teacherId,
-                markedby_name: teacherName,
-                date: today
-            }));
-
-            try {
-                // Remove existing attendance for today
-                const attAll = await getAll('attendance');
-                const tx = db.transaction(['attendance'], "readwrite");
-                const store = tx.objectStore('attendance');
-
-                // Delete existing records for today and this class
-                const deletePromises = [];
-                attAll.forEach((a, index) => {
-                    if (a.classid === classId && a.date === today) {
-                        deletePromises.push(new Promise((resolve, reject) => {
-                            const deleteReq = store.delete(index + 1); // IndexedDB uses 1-based auto-increment
-                            deleteReq.onsuccess = () => resolve();
-                            deleteReq.onerror = () => reject(deleteReq.error);
-                        }));
-                    }
-                });
-
-                await Promise.all(deletePromises);
-
-                // Add new attendance records
-                for (const record of attendanceData) {
-                    await add('attendance', record);
+            // Delete existing records for today and this class
+            const deletePromises = [];
+            attAll.forEach((a, index) => {
+                if (a.classid === classId && a.date === today) {
+                    deletePromises.push(new Promise((resolve, reject) => {
+                        const deleteReq = store.delete(index + 1); // IndexedDB uses 1-based auto-increment
+                        deleteReq.onsuccess = () => resolve();
+                        deleteReq.onerror = () => reject(deleteReq.error);
+                    }));
                 }
-
-                alert("✅ Attendance submitted successfully!");
-            } catch (error) {
-                console.error('Error submitting attendance:', error);
-                alert("❌ Failed to submit attendance.");
-            }
-        }
-
-        async function confirmHoliday() {
-            const password = document.getElementById("teacherPassword").value;
-            const teacherId = getQueryParam('teacherid') || 'teacher1';
-            await openDB();
-            const teachers = await getAll('teachers');
-            const teacher = teachers.find(t => (t.id || t.teacherid) === teacherId && t.password === password);
-            if (!teacher) {
-                alert("Incorrect password. Try again.");
-                return;
-            }
-
-            const today = new Date().toISOString().slice(0, 10);
-            await save('holidays', {
-                date: today,
-                reason: `Marked as holiday by ${teacher.name || teacherId}`
             });
-            alert("Holiday set successfully.");
-            const modal = bootstrap.Modal.getInstance(document.getElementById("holidayModal"));
-            modal.hide();
-            document.getElementById("teacherPassword").value = "";
+
+            await Promise.all(deletePromises);
+
+            // Add new attendance records
+            for (const record of attendanceData) {
+                await add('attendance', record);
+            }
+
+            alert("✅ Attendance submitted successfully!");
+        } catch (error) {
+            console.error('Error submitting attendance:', error);
+            alert("❌ Failed to submit attendance.");
         }
-    </script>
+    }
+
+    async function confirmHoliday() {
+        const password = document.getElementById("teacherPassword").value;
+        const teacherId = getQueryParam('teacherid') || 'teacher1';
+        await openDB();
+        const teachers = await getAll('teachers');
+        const teacher = teachers.find(t => (t.id || t.teacherid) === teacherId && t.password === password);
+        if (!teacher) {
+            alert("Incorrect password. Try again.");
+            return;
+        }
+
+        const today = new Date().toISOString().slice(0, 10);
+        await save('holidays', {
+            date: today,
+            reason: `Marked as holiday by ${teacher.name || teacherId}`
+        });
+        alert("Holiday set successfully.");
+        const modal = bootstrap.Modal.getInstance(document.getElementById("holidayModal"));
+        modal.hide();
+        document.getElementById("teacherPassword").value = "";
+    }
+
+    // Initialize sample data
+    openDB().then(() => {
+        add('teachers', { teacherid: 'T2', name: 'Mohan' }).catch(() => {});
+        add('classes', { classid: 'C2', name: 'CSE' }).catch(() => {});
+    });
+</script>
+
 </body>
 
 </html>
