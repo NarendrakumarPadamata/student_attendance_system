@@ -49,7 +49,6 @@
   </style>
 </head>
 <body>
-<div id="studentLoggedInLink" class="text-end p-2"></div>
 
 <div class="appname">Student Attendance System</div>
 
@@ -276,8 +275,65 @@ if (localStorage.getItem("userType") === "student") {
 }
 </script>
 
+
+<!-- Place this inside your <footer> -->
 <footer class="text-center mt-5 py-3" style="background-color: #023246; color: #f6f6f6;">
-  &copy; 2025 Student Attendance System. All rights reserved.
+  &copy; 2025 Student Attendance System. All rights reserved;
+
+  <!-- Admin button: initially hidden -->
+  <button id="adminButton"
+          style="
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          ">
+    Admin
+  </button>
 </footer>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const adminButton = document.getElementById('adminButton');
+    const adminPassword = "admin@dept";
+
+    // Toggle admin button visibility when Alt + A is pressed
+    document.body.addEventListener('keydown', function(e) {
+      if (e.altKey && e.key.toLowerCase() === 'a') {
+        if (adminButton.style.display === "none" || adminButton.style.display === "") {
+          // Show button
+          adminButton.style.display = "block";
+          // Optionally alert or silently toggle
+          // alert("Admin button is now visible");
+        } else {
+          // Hide button
+          adminButton.style.display = "none";
+          // alert("Admin button is now hidden");
+        }
+      }
+    });
+
+    // On click, ask for password before redirect
+    adminButton.addEventListener('click', () => {
+      const enteredPwd = prompt("Enter admin password:");
+      if (enteredPwd === adminPassword) {
+        window.location.href = 'admin.html';
+      } else if (enteredPwd !== null) {
+        alert("Incorrect password. Access denied.");
+      }
+    });
+  });
+</script>
+
+
 </body>
 </html>
