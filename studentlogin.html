@@ -125,7 +125,6 @@
 
   <div class="top-bar">
     <div>
-      <strong>Teacher:</strong> <span id="username"></span> |
       <strong>Class ID:</strong> <span id="class-id"></span>
     </div>
     <div id="date-time" class="text-end"></div>
@@ -156,7 +155,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
-  <script>
+<script>
   // === IndexedDB Setup ===
   let db;
   const DB_NAME = 'attendanceDB', DB_VERSION = 6;
@@ -169,7 +168,10 @@
         db = evt.target.result;
         ["classes", "students", "teachers", "holidays", "attendance", "logs"].forEach(store => {
           if (!db.objectStoreNames.contains(store)) {
-            db.createObjectStore(store, { keyPath: store === 'holidays' ? 'date' : 'id', autoIncrement: store === 'attendance' || store === 'logs' });
+            db.createObjectStore(store, {
+              keyPath: store === 'holidays' ? 'date' : 'id',
+              autoIncrement: store === 'attendance' || store === 'logs'
+            });
           }
         });
       };
@@ -190,6 +192,26 @@
     );
   }
 
+  // Helper to get URL query parameter
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+
+  // Set class name and ID in top bar
+  async function setClassInfo() {
+    const classId = getQueryParam("classid");
+    if (!classId) {
+      document.getElementById("class-id").textContent = "(Class ID not specified)";
+      return;
+    }
+    await openDB();
+    const classes = await getAll('classes');
+    const cls = classes.find(c => (c.classid === classId || c.id === classId));
+    const displayText = cls && cls.name ? `${cls.name} (${classId})` : classId;
+    document.getElementById("class-id").textContent = displayText;
+  }
+
   document.getElementById("searchBtn").addEventListener("click", async function () {
     const inputId = document.getElementById("studentIdInput").value.trim();
     const detailsDiv = document.getElementById("studentDetails");
@@ -199,27 +221,60 @@
       return;
     }
 
-    await openDB();
-    const attendanceRecords = (await getAll('attendance')).filter(r => (r.studentid || r.studentId || r.id) === inputId);
-    const students = await getAll('students');
-    const student = students.find(s => (s.id || s.studentId) === inputId);
-
-    if (attendanceRecords.length === 0 || !student) {
-      detailsDiv.innerHTML = "<div class='alert alert-danger w-100 text-center'>No records found for this Student ID.</div>";
+    const loggedInClassId = getQueryParam("classid");
+    if (!loggedInClassId) {
+      detailsDiv.innerHTML = "<div class='alert alert-danger w-100 text-center'>Class ID not specified in URL.</div>";
       document.getElementById("calendar").innerHTML = "";
       return;
     }
 
-    const presents = attendanceRecords.filter(r => r.status === "Present").length;
-    const absents = attendanceRecords.filter(r => r.status === "Absent").length;
+    // Set class display in top bar dynamically
+    await setClassInfo();
+
+    await openDB();
+    const students = await getAll('students');
+    // Find student by input ID
+    const student = students.find(s => (s.id || s.studentId) === inputId);
+
+    // Check if student exists and belongs to the logged in class
+    if (!student || ((student.classid || student.classId) !== loggedInClassId)) {
+      detailsDiv.innerHTML = "<div class='alert alert-danger w-100 text-center'>No records found for this Student ID in your class.</div>";
+      document.getElementById("calendar").innerHTML = "";
+      return;
+    }
+
+    // Get attendance records filtered by student ID and logged in class
+    const allAttendance = await getAll('attendance');
+    const attendanceRecords = allAttendance.filter(r =>
+      (r.studentid || r.studentId || r.id) === inputId &&
+      (r.classid === loggedInClassId || r.classId === loggedInClassId)
+    );
+
+    if (!attendanceRecords.length) {
+      detailsDiv.innerHTML = "<div class='alert alert-danger w-100 text-center'>No attendance records found for this Student ID in your class.</div>";
+      document.getElementById("calendar").innerHTML = "";
+      return;
+    }
+
+    // Get holidays
+    const holidays = await getAll('holidays');
+    const holidayDates = new Set(holidays.map(h => h.date));
+
+    // Filter out attendance on holidays
+    const filteredAttendance = attendanceRecords.filter(r => !holidayDates.has(r.date));
+
+    // Calculate stats excluding holidays
+    const presents = filteredAttendance.filter(r => r.status === "Present").length;
+    const absents = filteredAttendance.filter(r => r.status === "Absent").length;
     const workingDays = presents + absents;
     const overallPercent = workingDays ? ((presents / workingDays) * 100).toFixed(1) : 0;
 
+    // Monthly stats
     const monthly = {};
-    attendanceRecords.forEach(r => {
+    filteredAttendance.forEach(r => {
       const month = r.date.slice(0, 7);
       if (!monthly[month]) monthly[month] = { total: 0, present: 0 };
-      if (r.status !== "Holiday") monthly[month].total++;
+      monthly[month].total++;
       if (r.status === "Present") monthly[month].present++;
     });
 
@@ -229,8 +284,7 @@
       monthlyHtml += `<li>${month}: <strong>${percent}%</strong> (${data.present}/${data.total})</li>`;
     }
 
-    const latest = attendanceRecords[attendanceRecords.length - 1];
-
+    // Render student details and stats
     detailsDiv.innerHTML = `
       <div class="card shadow" style="max-width: 450px;">
         <div class="card-body">
@@ -250,26 +304,49 @@
           <div>
             <strong>Monthly Attendance:</strong>
             <ul class="mb-0">${monthlyHtml}</ul>
-          </div>            
+          </div>             
+        </div>
       </div>
     `;
 
+    // Prepare calendar events
     const calendarEl = document.getElementById("calendar");
-    const calendarEvents = attendanceRecords.map(record => {
-      let color = "";
-      if (record.status === "Present") color = "#198754";
-      else if (record.status === "Absent") color = "#dc3545";
-      else if (record.status === "Holiday") color = "#fd7e14";
 
-      return {
-        title: record.status,
-        start: record.date,
-        allDay: true,
-        backgroundColor: color,
-        borderColor: color
-      };
+    // Combine dates from filtered attendance and holidays
+    const datesSet = new Set(filteredAttendance.map(r => r.date).concat([...holidayDates]));
+
+    const calendarEvents = [];
+    datesSet.forEach(date => {
+      if (holidayDates.has(date)) {
+        // Holiday overrides attendance
+        calendarEvents.push({
+          title: "Holiday",
+          start: date,
+          allDay: true,
+          backgroundColor: "#fd7e14",  // orange color for holiday
+          borderColor: "#fd7e14"
+        });
+      } else {
+        // Show attendance status normally
+        const record = filteredAttendance.find(r => r.date === date);
+        if (record) {
+          let color = "";
+          if (record.status === "Present") color = "#198754"; // green
+          else if (record.status === "Absent") color = "#dc3545"; // red
+          else color = "#6c757d"; // fallback gray
+
+          calendarEvents.push({
+            title: record.status,
+            start: date,
+            allDay: true,
+            backgroundColor: color,
+            borderColor: color
+          });
+        }
+      }
     });
 
+    // Render FullCalendar
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'dayGridMonth',
       height: 550,
@@ -287,6 +364,7 @@
     calendar.render();
   });
 
+  // Update date-time display every second
   function updateDateTime() {
     const now = new Date();
     const dateStr = now.toLocaleDateString();
@@ -297,5 +375,7 @@
   updateDateTime();
   setInterval(updateDateTime, 1000);
 </script>
+
+
 </body>
 </html>
