@@ -238,6 +238,26 @@
     renderDailyLineChart();
   }
 
+  // --- Deduplication utility (admin-wins, per student/date/class) ---
+  function dedupAttendance(records, classId, filterDate = null) {
+    // filter for classId
+    const perDayPerStudent = {};
+    records.forEach(r => {
+      if (!(r.classId === classId || r.classid === classId)) return;
+      if (holidayDatesSet.has(r.date)) return;
+      if (filterDate && r.date !== filterDate) return;
+      const sid = r.studentId || r.studentid || r.id;
+      const key = `${sid}|${r.date}`;
+      if (!perDayPerStudent[key]) {
+        perDayPerStudent[key] = r;
+      } else if (r.markedByAdmin === true) {
+        perDayPerStudent[key] = r; // admin wins
+      }
+    });
+    return Object.values(perDayPerStudent);
+  }
+
+  // ---------- Attendance Report Table (dedup!) ----------
   async function renderAttendanceReport(filterDate = "") {
     const tbody = document.getElementById("attendanceReportTable");
     tbody.innerHTML = "";
@@ -260,7 +280,6 @@
     });
 
     const isFilteringByDate = Boolean(filterDate);
-
     if (isFilteringByDate && holidayDatesSet.has(filterDate)) {
       // Show "Holiday" status for all students on the holiday date
       classStudents.forEach(student => {
@@ -276,21 +295,27 @@
       return;
     }
 
-    const filteredRecords = attendanceRecords.filter(record =>
-      classStudentIds.has(record.studentid || record.id) &&
-      (!filterDate || record.date === filterDate) &&
-      !holidayDatesSet.has(record.date)
-    );
+    // --- Deduplicate before display ---
+    const dedupedRecords = dedupAttendance(attendanceRecords, classId, filterDate);
 
-    if (filteredRecords.length === 0) {
+    // Reconfirm in-class students only, and order by name/date
+    const showRecords = dedupedRecords.filter(record => classStudentIds.has(record.studentid || record.studentId || record.id));
+    if (showRecords.length === 0) {
       tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No attendance records found for this class and date.</td></tr>`;
       return;
     }
 
-    filteredRecords.forEach(record => {
+    showRecords.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      const aName = studentMap[a.studentid || a.studentId || a.id] || "";
+      const bName = studentMap[b.studentid || b.studentId || b.id] || "";
+      return aName.localeCompare(bName);
+    });
+
+    showRecords.forEach(record => {
       const row = document.createElement("tr");
       row.classList.add("text-center");
-      const studentName = studentMap[record.studentid || record.id] || "";
+      const studentName = studentMap[record.studentid || record.studentId || record.id] || "";
       row.innerHTML = `
         <td>${record.date}</td>
         <td>${studentName}</td>
@@ -300,33 +325,31 @@
     });
   }
 
+
   document.getElementById("dateFilter").addEventListener("change", function () {
     renderAttendanceReport(this.value);
   });
 
+  // ---------- Donut Chart with Deduplication ----------
   async function getOverallSummary() {
     await loadHolidayDatesSet();
-    let present = 0, absent = 0;
     const classId = getClassId();
-
     const students = await getAll('students');
-    const classStudentIds = new Set();
-    students.forEach(s => {
-      if (s.classid === classId || s.classId === classId || s.class_id === classId) {
-        classStudentIds.add(s.studentid || s.id);
-      }
-    });
+    const classStudentIds = new Set(
+      students
+        .filter(s => s.classid === classId || s.classId === classId || s.class_id === classId)
+        .map(s => s.studentid || s.id)
+    );
 
-    attendanceRecords.forEach(r => {
-      if (
-        classStudentIds.has(r.studentid || r.id) &&
-        !holidayDatesSet.has(r.date)
-      ) {
-        if (r.status === "Present") present++;
-        else if (r.status === "Absent") absent++;
-      }
-    });
+    // Use deduplication across all records for this class
+    const deduped = dedupAttendance(attendanceRecords, classId);
 
+    let present = 0, absent = 0;
+    deduped.forEach(r => {
+      if (!classStudentIds.has(r.studentId || r.studentid || r.id)) return;
+      if (r.status === "Present") present++;
+      else if (r.status === "Absent") absent++;
+    });
     return { present, absent };
   }
 
@@ -389,10 +412,27 @@
     });
   }
 
+  // ---------- Trend Graph with Deduplication ----------
   function groupByDate(records) {
     const grouped = {};
-    records.forEach(r => {
-      if (holidayDatesSet.has(r.date)) return; // skip holidays
+    const perDayPerStudent = {};
+    const classId = getClassId();
+
+    for (const r of records) {
+      if (!(r.classId === classId || r.classid === classId)) continue;
+      if (holidayDatesSet.has(r.date)) continue;
+      const studentId = r.studentId || r.studentid || r.id;
+      const date = r.date;
+      const key = `${studentId}|${date}`;
+      // Only one record per student per day: admin wins
+      if (!perDayPerStudent[key]) {
+        perDayPerStudent[key] = r;
+      } else if (r.markedByAdmin === true) {
+        perDayPerStudent[key] = r;
+      }
+    }
+
+    Object.values(perDayPerStudent).forEach(r => {
       if (!grouped[r.date]) grouped[r.date] = { Present: 0, Absent: 0 };
       if (r.status === "Present") grouped[r.date].Present++;
       if (r.status === "Absent") grouped[r.date].Absent++;
@@ -480,9 +520,24 @@
     return prev.toISOString().slice(0, 10);
   }
 
+  // Correctly deduplicate for strength
   function getStrength(date) {
-    // Approximate strength as count of "Present" on given date
-    return attendanceRecords.filter(r => r.date === date && r.status === "Present").length;
+    const classId = getClassId();
+    const records = attendanceRecords.filter(r =>
+      r.date === date &&
+      (r.classId === classId || r.classid === classId)
+    );
+    // Only unique per student/day, admin wins
+    const statusByStudent = {};
+    for (const r of records) {
+      const sid = r.studentId || r.studentid || r.id;
+      if (!statusByStudent[sid]) {
+        statusByStudent[sid] = r;
+      } else if (r.markedByAdmin === true) {
+        statusByStudent[sid] = r;
+      }
+    }
+    return Object.values(statusByStudent).filter(r => r.status === "Present").length;
   }
 
   async function isHoliday(date) {
@@ -515,7 +570,6 @@
     const dates = [...new Set(attendanceRecords.map(r => r.date))];
     return dates.sort().reverse()[0] || "";
   }
-
   window.addEventListener("DOMContentLoaded", async () => {
     await setTeacherAndClassInfo();
     await loadAttendanceRecords();
@@ -531,8 +585,5 @@
     await renderDailyLineChart();
   });
 </script>
-
-
-
 </body>
 </html>
