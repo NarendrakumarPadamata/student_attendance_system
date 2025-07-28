@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <style>
     body {
       background-color: #f5f7fa;
@@ -60,8 +60,13 @@
         </div>
       </div>
     </div>
+
     <h5 class="dashboard-title">Class-wise Summary</h5>
     <div class="row g-4" id="classSummaryContainer"></div>
+
+    <h5 class="dashboard-title mt-4">Class-wise Attendance Summary</h5>
+    <div id="classAttendanceSummary" class="mb-4"></div>
+
     <h5 class="dashboard-title">Admin Operations</h5>
     <div class="row g-4">
       <div class="col-md-3">
@@ -102,6 +107,7 @@
       </div>
     </div>
   </div>
+
   <!-- Classes Modal -->
   <div class="modal fade" id="classesModal" tabindex="-1">
     <div class="modal-dialog">
@@ -112,13 +118,14 @@
         </div>
         <div class="modal-body">
           <ul id="classList" class="list-group mb-3"></ul>
-          <input type="text" id="newClassInput" class="form-control mb-2" placeholder="New Class ID"/>
-          <input type="text" id="newClassNameInput" class="form-control mb-2" placeholder="Class Name"/>
+          <input type="text" id="newClassInput" class="form-control mb-2" placeholder="New Class ID" />
+          <input type="text" id="newClassNameInput" class="form-control mb-2" placeholder="Class Name" />
           <button onclick="addClass()" class="btn btn-success w-100">Add Class</button>
         </div>
       </div>
     </div>
   </div>
+
   <!-- Students Modal -->
   <div class="modal fade" id="studentsModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -173,6 +180,7 @@
       </div>
     </div>
   </div>
+
   <!-- Teachers Modal -->
   <div class="modal fade" id="teachersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -199,17 +207,18 @@
           </div>
           <h6 class="mt-4">Add New Teacher</h6>
           <div class="row g-2">
-            <div class="col-md-2"><input type="text" id="newTeacherID" class="form-control" placeholder="Teacher ID"  required/></div>
-            <div class="col-md-3"><input type="text" id="newTeacherName" class="form-control" placeholder="Name" required/></div>
-            <div class="col-md-3"><input type="text" id="newTeacherContact" class="form-control" placeholder="Contact" required/></div>
-            <div class="col-md-3"><input type="text" id="newTeacherSubject" class="form-control" placeholder="Subject" required/></div>
-            <div class="col-md-2"><input type="password" id="newTeacherPassword" class="form-control" placeholder="Password" required/></div>
+            <div class="col-md-2"><input type="text" id="newTeacherID" class="form-control" placeholder="Teacher ID" required /></div>
+            <div class="col-md-3"><input type="text" id="newTeacherName" class="form-control" placeholder="Name" required /></div>
+            <div class="col-md-3"><input type="text" id="newTeacherContact" class="form-control" placeholder="Contact" required /></div>
+            <div class="col-md-3"><input type="text" id="newTeacherSubject" class="form-control" placeholder="Subject" required /></div>
+            <div class="col-md-2"><input type="password" id="newTeacherPassword" class="form-control" placeholder="Password" required /></div>
             <div class="col-md-1"><button onclick="addTeacher()" class="btn btn-success w-100">Add</button></div>
           </div>
         </div>
       </div>
     </div>
   </div>
+
   <!-- Holidays Modal -->
   <div class="modal fade" id="holidaysModal" tabindex="-1">
     <div class="modal-dialog">
@@ -220,13 +229,14 @@
         </div>
         <div class="modal-body">
           <ul class="list-group mb-3" id="holidayList"></ul>
-          <input type="date" id="newHolidayDate" class="form-control mb-2" placeholder="Holiday Date"/>
-          <input type="text" id="newHolidayReason" class="form-control mb-2" placeholder="Reason"/>
+          <input type="date" id="newHolidayDate" class="form-control mb-2" placeholder="Holiday Date" />
+          <input type="text" id="newHolidayReason" class="form-control mb-2" placeholder="Reason" />
           <button onclick="addHoliday()" class="btn btn-success w-100">Add Holiday</button>
         </div>
       </div>
     </div>
   </div>
+
   <!-- Logs Modal -->
   <div class="modal fade" id="logsModal" tabindex="-1">
     <div class="modal-dialog">
@@ -255,6 +265,7 @@
       </div>
     </div>
   </div>
+
   <!-- Confirm Modal -->
   <div class="modal fade" id="confirmModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -271,322 +282,576 @@
       </div>
     </div>
   </div>
-  <!-- Manage Attendance Modal -->
-<div class="modal fade" id="attendanceModal" tabindex="-1" aria-labelledby="attendanceModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="attendanceModalLabel">Manage Attendance</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row align-items-center mb-3">
-          <div class="col-md-4">
-            <label for="attendanceClassFilter" class="form-label">Filter by Class</label>
-            <select id="attendanceClassFilter" class="form-select">
-              <option value="">Select Class</option>
-              <!-- Will be populated dynamically -->
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label for="attendanceDateFilter" class="form-label">Date</label>
-            <input type="date" id="attendanceDateFilter" class="form-control"/>
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button id="loadAttendanceBtn" class="btn btn-primary w-100">Load Attendance</button>
-          </div>
-        </div>
 
-        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-          <table class="table table-bordered align-middle text-center">
-            <thead class="table-dark">
-              <tr>
-                <th>Student ID</th>
-                <th>Name</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="attendanceTableBody">
-              <tr><td colspan="3" class="text-center text-muted">Select class and date to load attendance.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="saveAttendanceBtn" class="btn btn-success" disabled>Save Attendance</button>
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
+  <!-- Manage Attendance Modal -->
+  <div class="modal fade" id="attendanceModal" tabindex="-1" aria-labelledby="attendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="attendanceModalLabel">Manage Attendance</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row align-items-center mb-3">
+            <div class="col-md-4">
+              <label for="attendanceClassFilter" class="form-label">Filter by Class</label>
+              <select id="attendanceClassFilter" class="form-select">
+                <option value="">Select Class</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="attendanceDateFilter" class="form-label">Date</label>
+              <input type="date" id="attendanceDateFilter" class="form-control" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button id="loadAttendanceBtn" class="btn btn-primary w-100">Load Attendance</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-bordered align-middle text-center">
+              <thead class="table-dark">
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody">
+                <tr><td colspan="3" class="text-center text-muted">Select class and date to load attendance.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="saveAttendanceBtn" class="btn btn-success"s>Save Attendance</button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  // === IndexedDB Setup and Helpers ===
-  let db;
-  const DB_NAME = 'attendanceDB', DB_VERSION = 6;
-  let classes = [];
-  let students = [];
-  let teachers = [];
-  let holidays = [];
-  let logs = [];
-  let attendanceRecordsAll = [];
+  <script>
+    // === IndexedDB Setup and Helpers ===
+let db;
+const DB_NAME = 'attendanceDB', DB_VERSION = 6;
+let classes = [];
+let students = [];
+let teachers = [];
+let holidays = [];
+let logs = [];
+let attendanceRecordsAll = [];
 
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      if (db) return resolve(db);
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = evt => {
-        db = evt.target.result;
-        ['classes', 'students', 'teachers', 'holidays', 'attendance', 'logs'].forEach(store => {
-          if (!db.objectStoreNames.contains(store)) {
-            db.createObjectStore(store, {
-              keyPath: store === 'holidays' ? 'date' : 'id',
-              autoIncrement: store === 'attendance' || store === 'logs'
-            });
-          }
-        });
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = evt => {
+      db = evt.target.result;
+      const keyPaths = {
+        holidays: 'date',
+        classes: 'id',
+        students: 'id',
+        teachers: 'id'
       };
-      req.onsuccess = evt => { db = evt.target.result; resolve(db); };
-      req.onerror = evt => reject(evt.target.error);
-    });
-  }
-
-  function getAll(store) {
-    return openDB().then(() =>
-      new Promise((resolve, reject) => {
-        const tx = db.transaction([store], "readonly"),
-              storeObj = tx.objectStore(store),
-              request = storeObj.getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      })
-    );
-  }
-
-  function save(store, val) {
-    return openDB().then(() =>
-      new Promise((res, rej) => {
-        const tx = db.transaction([store], "readwrite"),
-              storeObj = tx.objectStore(store),
-              request = storeObj.put(val);
-        request.onsuccess = () => res(true);
-        request.onerror = () => rej(request.error);
-      })
-    );
-  }
-
-  function remove(store, key) {
-    return openDB().then(() =>
-      new Promise((res, rej) => {
-        const tx = db.transaction([store], "readwrite"),
-              storeObj = tx.objectStore(store),
-              request = storeObj.delete(key);
-        request.onsuccess = () => res(true);
-        request.onerror = () => rej(request.error);
-      })
-    );
-  }
-
-  // --- Utility ---
-  function formatDate(date) {
-    return date.toISOString().slice(0, 10);
-  }
-
-  // --- Main Dashboard Renders ---
-  function renderClasses() {
-    document.getElementById("totalClasses").textContent = classes.length;
-    // Class summary cards:
-    const classSummary = document.getElementById("classSummaryContainer");
-    if (!classSummary) return;
-    classSummary.innerHTML = "";
-    classes.forEach((cls, i) => {
-      const studentsCount = students.filter(st => st.classId === cls.id).length;
-      if (!cls.avgAttendance) cls.avgAttendance = 95;
-      const classTeacher = teachers.find(t => t.subject && cls.name && cls.name.includes(t.subject))?.name || "Not Assigned";
-      classSummary.innerHTML += `<div class="col-md-4"><div class="card p-3">
-          <h6 class="card-title">Class ID: ${cls.id}${cls.name ? ` <span class="text-secondary">(${cls.name})</span>` : ""}</h6>
-          <ul class="list-group list-group-flush">
-              <li class="list-group-item">Class Teacher: <strong>${classTeacher}</strong></li>
-              <li class="list-group-item">Total Students: <strong>${studentsCount}</strong></li>
-              <li class="list-group-item">Average Attendance: <strong class="${cls.avgAttendance < 75 ? 'text-danger' : 'text-success'}">${cls.avgAttendance || 0}%</strong></li>
-          </ul></div></div>`;
-    });
-  }
-  function renderHolidays() {
-    document.getElementById("totalHolidays").textContent = holidays.length;
-  }
-
-  // --- CRUD Renders (you can expand as needed) ---
-  function populateAttendanceClassFilter() {
-    const sel = document.getElementById('attendanceClassFilter');
-    if (!sel) return;
-    sel.innerHTML = `<option value="">Select Class</option>` +
-      classes.map(c => `<option value="${c.id}">${c.id} - ${c.name || ''}</option>`).join('');
-  }
-
-  // --- Load All and Render Dashboard ---
-  async function loadAllData() {
-    [classes, students, teachers, holidays, logs, attendanceRecordsAll] = await Promise.all([
-      getAll('classes'),
-      getAll('students'),
-      getAll('teachers'),
-      getAll('holidays'),
-      getAll('logs'),
-      getAll('attendance')
-    ]);
-    renderClasses();
-    renderHolidays();
-    populateAttendanceClassFilter();
-    // If modals/tables, call their render too if you want to live-update them
-  }
-
-  // --- Manage Attendance modal logic (unchanged except for data reloads reflecting everywhere) ---
-  function isHoliday(dateStr) {
-    return holidays.some(h => h.date === dateStr);
-  }
-
-  function renderAttendanceTable(classId, date) {
-    const tbody = document.getElementById('attendanceTableBody');
-    tbody.innerHTML = '';
-
-    if (!classId || !date) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Please select a class and date.</td></tr>`;
-      disableSaveButton(true);
-      return;
-    }
-    if (isHoliday(date)) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger fw-bold">Cannot mark attendance on a holiday (${date}).</td></tr>`;
-      disableSaveButton(true);
-      return;
-    }
-    const filteredStudents = students.filter(s => s.classId === classId);
-    if (filteredStudents.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No students in this class.</td></tr>`;
-      disableSaveButton(true);
-      return;
-    }
-    const attendanceForDate = attendanceRecordsAll.filter(r => r.classId === classId && r.date === date);
-    filteredStudents.forEach(student => {
-      const adminRecord = attendanceForDate.find(r => r.studentId === student.id && r.markedByAdmin === true);
-      const teacherRecord = attendanceForDate.find(r => r.studentId === student.id && !r.markedByAdmin);
-      const teacherStatus = teacherRecord ? teacherRecord.status : "Not marked";
-      const adminStatus = adminRecord ? adminRecord.status : teacherStatus;
-      const isToday = (date === formatDate(new Date()));
-      const disableSelect = !isToday || !!adminRecord;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${student.id}</td>
-        <td>${student.name}</td>
-        <td>${teacherStatus}</td>
-        <td>
-          <select class="form-select form-select-sm attendance-status" data-studentid="${student.id}" ${disableSelect ? 'disabled' : ''}>
-            <option value="" ${adminStatus === "" ? "selected" : ""}>Select</option>
-            <option value="Present" ${adminStatus === "Present" ? "selected" : ""}>Present</option>
-            <option value="Absent" ${adminStatus === "Absent" ? "selected" : ""}>Absent</option>
-            <option value="Holiday" disabled>Holiday</option>
-          </select>
-        </td>`;
-      tbody.appendChild(tr);
-    });
-    disableSaveButton(true);
-    const anyEditable = Array.from(tbody.querySelectorAll('select.attendance-status')).some(sel => !sel.disabled);
-    if (anyEditable) disableSaveButton(false);
-    tbody.querySelectorAll('select.attendance-status').forEach(select => {
-      if (!select.disabled) {
-        select.addEventListener('change', () => disableSaveButton(false));
-      }
-    });
-  }
-
-  function disableSaveButton(disable) {
-    const btn = document.getElementById('saveAttendanceBtn');
-    if (btn) btn.disabled = disable;
-  }
-
-  // --- Event Handlers ---
-  document.getElementById('loadAttendanceBtn').addEventListener('click', () => {
-    const classId = document.getElementById('attendanceClassFilter').value;
-    const date = document.getElementById('attendanceDateFilter').value;
-    if (!classId) return alert('Please select a class.');
-    if (!date) return alert('Please select a date.');
-    renderAttendanceTable(classId, date);
-  });
-
-  // Save Attendance (as admin, only once per student per today)
-  document.getElementById('saveAttendanceBtn').addEventListener('click', async () => {
-    const classId = document.getElementById('attendanceClassFilter').value;
-    const date = document.getElementById('attendanceDateFilter').value;
-    if (!classId || !date) {
-      alert('Please select class and date before saving attendance.');
-      return;
-    }
-    if (isHoliday(date)) {
-      alert('Cannot save attendance on a holiday.');
-      return;
-    }
-    if (date !== formatDate(new Date())) {
-      alert('You can only change attendance for today.');
-      return;
-    }
-    const tbody = document.getElementById('attendanceTableBody');
-    const selects = tbody.querySelectorAll('select.attendance-status');
-    const updates = [];
-    selects.forEach(select => {
-      const studentId = select.getAttribute('data-studentid');
-      const status = select.value;
-      if (!status) return;
-      let record = attendanceRecordsAll.find(r =>
-        r.classId === classId &&
-        r.studentId === studentId &&
-        r.date === date &&
-        r.markedByAdmin === true
-      );
-      if (record) { // never happens for enabled select as per UI, but handle just in case
-        record.status = status;
-        updates.push(record);
-      } else {
-        record = {
-          classId,
-          studentId,
-          date,
-          status,
-          markedByAdmin: true
-        };
-        updates.push(record);
-      }
-    });
-    try {
-      for (const rec of updates) {
-        await save('attendance', rec);
-      }
-      alert('Attendance saved successfully.');
-      await loadAllData();
-      renderAttendanceTable(classId, date);
-      disableSaveButton(true);
-      await save('logs', {
-        date: new Date().toISOString(),
-        type: 'Attendance',
-        message: `Admin updated attendance for class ${classId} on ${date}`
+      ['classes', 'students', 'teachers', 'holidays', 'attendance', 'logs'].forEach(store => {
+        if (!db.objectStoreNames.contains(store)) {
+          if (store === 'attendance' || store === 'logs') {
+            db.createObjectStore(store, { autoIncrement: true });
+          } else {
+            db.createObjectStore(store, { keyPath: keyPaths[store] });
+          }
+        }
       });
-    } catch (error) {
-      console.error('Failed to save attendance:', error);
-      alert('Failed to save attendance. Please try again.');
+    };
+    req.onsuccess = evt => { db = evt.target.result; resolve(db); };
+    req.onerror = evt => reject(evt.target.error);
+  });
+}
+
+function getAll(store) {
+  return openDB().then(() =>
+    new Promise((resolve, reject) => {
+      const tx = db.transaction([store], "readonly"),
+            storeObj = tx.objectStore(store),
+            request = storeObj.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    })
+  );
+}
+
+function save(store, val) {
+  return openDB().then(() =>
+    new Promise((res, rej) => {
+      const tx = db.transaction([store], "readwrite"),
+            storeObj = tx.objectStore(store),
+            request = storeObj.put(val);
+      request.onsuccess = () => res(true);
+      request.onerror = () => rej(request.error);
+    })
+  );
+}
+
+function remove(store, key) {
+  return openDB().then(() =>
+    new Promise((res, rej) => {
+      const tx = db.transaction([store], "readwrite"),
+            storeObj = tx.objectStore(store),
+            request = storeObj.delete(key);
+      request.onsuccess = () => res(true);
+      request.onerror = () => rej(request.error);
+    })
+  );
+}
+
+function formatDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+// --- LOG WRITING FOR ALL ACTIONS ---
+async function addLog({ type, message, date = formatDate(new Date()), classId = '', details = {} }) {
+  await save('logs', {
+    type,
+    message,
+    date,
+    classId,
+    ...details
+  });
+  if (typeof renderLogs === "function") renderLogs();
+}
+
+// --- Class-wise Attendance Summary ---
+function calculateClassAttendanceSummary(classes, students, attendanceRecordsAll, date) {
+  const results = [];
+  classes.forEach(cls => {
+    const classId = cls.id;
+    const studentsInClass = students.filter(s => s.classId === classId || s.classid === classId);
+    const totalStudents = studentsInClass.length;
+    if (totalStudents === 0) {
+      results.push({
+        classId,
+        totalStudents: 0,
+        totalPresent: 0,
+        averageAttendancePercentage: null
+      });
+      return;
     }
+    const attendanceForDate = attendanceRecordsAll.filter(r => 
+      ((r.classId === classId || r.classid === classId) && r.date === date)
+    );
+
+    let presentCount = 0;
+    studentsInClass.forEach(student => {
+      const adminRec = attendanceForDate.find(r =>
+        (r.studentId === student.id || r.studentid === student.id) && r.markedByAdmin === true);
+      const teacherRec = attendanceForDate.find(r =>
+        (r.studentId === student.id || r.studentid === student.id) && (!r.markedByAdmin || r.markedByAdmin === false));
+      const status = adminRec ? adminRec.status : (teacherRec ? teacherRec.status : 'Absent');
+      if (status === 'Present') presentCount++;
+    });
+
+    const avgAttendancePercent = (presentCount / totalStudents) * 100;
+
+    results.push({
+      classId,
+      totalStudents,
+      totalPresent: presentCount,
+      averageAttendancePercentage: Math.round(avgAttendancePercent * 100) / 100
+    });
+  });
+  return results;
+}
+
+function renderClassAttendanceSummary(date) {
+  const container = document.getElementById('classAttendanceSummary');
+  if (!container) return;
+
+  const summary = calculateClassAttendanceSummary(classes, students, attendanceRecordsAll, date);
+
+  if (!summary.length) {
+    container.innerHTML = "<p>No classes available</p>";
+    return;
+  }
+
+  let html = `
+  <table class="table table-bordered table-striped align-middle text-center">
+    <thead class="table-dark">
+      <tr>
+        <th>Class ID</th>
+        <th>Total Students</th>
+        <th>Total Present</th>
+        <th>Avg. Attendance (%)</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  summary.forEach(row => {
+    html += `
+      <tr>
+        <td>${row.classId}</td>
+        <td>${row.totalStudents}</td>
+        <td>${row.totalPresent}</td>
+        <td>${row.averageAttendancePercentage !== null ? row.averageAttendancePercentage.toFixed(2) : "N/A"}</td>
+      </tr>`;
   });
 
-  // --- Initialize page loads & dashboard UI ---
-  window.addEventListener('DOMContentLoaded', async () => {
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// --- Render Functions and Management ---
+
+async function loadAllData() {
+  [classes, students, teachers, holidays, logs, attendanceRecordsAll] = await Promise.all([
+    getAll('classes'),
+    getAll('students'),
+    getAll('teachers'),
+    getAll('holidays'),
+    getAll('logs'),
+    getAll('attendance')
+  ]);
+  renderClasses();
+  renderStudentTable();
+  renderTeacherTable();
+  renderHolidays();
+  renderLogs();
+  populateClassDropdowns();
+  renderAttendanceTable();
+
+  const date = document.getElementById('attendanceDateFilter')?.value || formatDate(new Date());
+  renderClassAttendanceSummary(date);
+}
+
+function renderClasses() {
+  const totalEl = document.getElementById("totalClasses");
+  if (totalEl) totalEl.textContent = classes.length;
+
+  const container = document.getElementById("classSummaryContainer");
+  if (container) {
+    container.innerHTML = "";
+    classes.forEach(cls => {
+      const studentsCount = students.filter(st => st.classId === cls.id).length;
+      const classTeacher = teachers.find(
+        t => t.subject && cls.name && cls.name.includes(t.subject)
+      )?.name || "Not Assigned";
+      container.innerHTML += `<div class="col-md-4"><div class="card p-3">
+        <h6 class="card-title">Class ID: ${cls.id}${cls.name ? ` <span class="text-secondary">(${cls.name})</span>` : ""}</h6>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">Class Teacher: <strong>${classTeacher}</strong></li>
+            <li class="list-group-item">Total Students: <strong>${studentsCount}</strong></li>
+        </ul></div></div>`;
+    });
+  }
+
+  const classList = document.getElementById("classList");
+  if (classList) {
+    classList.innerHTML = "";
+    classes.forEach((cls) => {
+      const studentsCount = students.filter(st => st.classId === cls.id).length;
+      classList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
+        <div><strong>${cls.id}</strong>${cls.name ? ` - ${cls.name}` : ""}<span class="ms-2 text-muted">Students: ${studentsCount}</span></div>
+        <button class="btn btn-sm btn-danger" onclick="deleteClass('${cls.id}')">Delete</button>
+      </li>`;
+    });
+  }
+}
+
+function renderStudentTable() {
+  const tbody = document.getElementById("studentTableBody");
+  if (!tbody) return;
+  const filterClass = document.getElementById("studentClassFilter")?.value;
+  let filteredStudents = filterClass ? students.filter(s => s.classId === filterClass) : students;
+  tbody.innerHTML = "";
+  if (!filteredStudents.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No students found for this selection.</td></tr>`;
+    return;
+  }
+  filteredStudents.forEach(stu => {
+    tbody.innerHTML += `<tr>
+      <td>${stu.id}</td>
+      <td>${stu.name}</td>
+      <td>${stu.classId}</td>
+      <td>${stu.contact || ""}</td>
+      <td>${stu.gender || ""}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="editStudent('${stu.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteStudent('${stu.id}')">Delete</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function renderTeacherTable() {
+  const tbody = document.getElementById("teacherTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!teachers.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No teachers found.</td></tr>`;
+    return;
+  }
+  teachers.forEach(t => {
+    tbody.innerHTML += `<tr>
+      <td>${t.id}</td>
+      <td>${t.name}</td>
+      <td>${t.contact || ""}</td>
+      <td>${t.subject || ""}</td>
+      <td>********</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="editTeacher('${t.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTeacher('${t.id}')">Delete</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function renderHolidays() {
+  const totalHolidays = document.getElementById("totalHolidays");
+  if (totalHolidays) totalHolidays.textContent = holidays.length;
+  const holidayList = document.getElementById("holidayList");
+  if (holidayList) {
+    holidayList.innerHTML = holidays.map(h =>
+      `<li class="list-group-item d-flex justify-content-between align-items-center">
+        <span><strong>${h.date}</strong> - ${h.reason}</span>
+        <button class="btn btn-sm btn-danger" onclick="deleteHoliday('${h.date}')">Delete</button>
+      </li>`).join('');
+  }
+}
+
+function renderLogs() {
+  const logsList = document.getElementById("logsList");
+  if (!logsList) return;
+  let filtered = logs;
+  const filterDate = document.getElementById("logFilterDate")?.value;
+  const filterType = document.getElementById("logTypeFilter")?.value;
+  const filterClass = document.getElementById("logClassFilter")?.value;
+  if (filterDate) filtered = filtered.filter(log => log.date === filterDate);
+  if (filterType) filtered = filtered.filter(log => log.type === filterType);
+  if (filterClass) filtered = filtered.filter(log => log.message.includes(filterClass));
+  if (!filtered.length) {
+    logsList.innerHTML = `<li class="list-group-item text-center text-muted">No logs for this selection.</li>`;
+    return;
+  }
+  logsList.innerHTML = filtered.sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(log =>
+      `<li class="list-group-item"><span class="badge bg-info me-2">${log.type}</span> [${log.date}] ${log.message}</li>`
+    ).join('');
+}
+
+// --- Dropdowns ---
+function populateClassDropdowns() {
+  const studentClassFilter = document.getElementById("studentClassFilter");
+  if (studentClassFilter) {
+    const val = studentClassFilter.value;
+    studentClassFilter.innerHTML = `<option value="">All Classes</option>` +
+      classes.map(c => `<option value="${c.id}"${val === c.id ? " selected" : ""}>${c.id} - ${c.name || ""}</option>`).join('');
+  }
+  const newStudentClass = document.getElementById("newStudentClass");
+  if (newStudentClass) {
+    newStudentClass.innerHTML = `<option value="">Select Class</option>` +
+      classes.map(c => `<option value="${c.id}">${c.id} - ${c.name || ""}</option>`).join('');
+  }
+  const attendanceClassFilter = document.getElementById('attendanceClassFilter');
+  if (attendanceClassFilter) {
+    const val = attendanceClassFilter.value;
+    attendanceClassFilter.innerHTML = `<option value="">Select Class</option>` +
+      classes.map(c => `<option value="${c.id}"${val === c.id ? " selected" : ""}>${c.id} - ${c.name || ""}</option>`).join('');
+  }
+  const logClassFilter = document.getElementById("logClassFilter");
+  if (logClassFilter) {
+    const val = logClassFilter.value;
+    logClassFilter.innerHTML = `<option value="">All Classes</option>` +
+      classes.map(c => `<option value="${c.id}"${val === c.id ? " selected" : ""}>${c.id} - ${c.name || ""}</option>`).join('');
+  }
+}
+
+// --- Add / Delete Functions === [WITH LOGS] ---
+// addStudent already above with log
+// addTeacher already above with log
+// addClass already above with log
+// addHoliday already above with log
+
+// --- Add / Delete - hook in logs ---
+async function addStudent() {
+  const id = document.getElementById("newStudentID").value.trim();
+  const name = document.getElementById("newStudentName").value.trim();
+  const classId = document.getElementById("newStudentClass").value;
+  const contact = document.getElementById("newStudentContact").value.trim();
+  const gender = document.getElementById("newStudentGender").value;
+  if (![id, name, classId, contact, gender].every(Boolean)) return alert("Please fill all fields.");
+  if (students.some(s => s.id === id)) return alert(`Student ID "${id}" already exists.`);
+  if (!classes.some(c => c.id === classId)) return alert(`Class ID "${classId}" is invalid.`);
+  await save('students', { id, name, classId, contact, gender });
+  await addLog({ type: 'Student', message: `Added student "${name}" (${id}) in Class ${classId}`, classId });
+  ["newStudentID", "newStudentName", "newStudentClass", "newStudentContact", "newStudentGender"].forEach(idBox => {
+    const el = document.getElementById(idBox); if (el) el.value = "";
+  });
+  await loadAllData();
+}
+window.deleteStudent = async function(id) {
+  if (confirm(`Are you sure you want to delete student ${id}?`)) {
+    await remove('students', id);
+    await addLog({ type: 'Student', message: `Deleted student ID "${id}"`, classId: "(unknown)" });
     await loadAllData();
-    // Set default date to today for manage attendance modal
-    const dateInput = document.getElementById('attendanceDateFilter');
-    if (dateInput) dateInput.value = formatDate(new Date());
+  }
+}
+async function addTeacher() {
+  const id = document.getElementById("newTeacherID").value.trim();
+  const name = document.getElementById("newTeacherName").value.trim();
+  const contact = document.getElementById("newTeacherContact").value.trim();
+  const subject = document.getElementById("newTeacherSubject").value.trim();
+  const password = document.getElementById("newTeacherPassword").value.trim();
+  if (![id, name, contact, subject, password].every(Boolean)) return alert("Please fill all fields.");
+  if (teachers.some(t => t.id === id)) return alert(`Teacher ID "${id}" already exists.`);
+  await save('teachers', { id, name, contact, subject, password });
+  await addLog({ type: 'Teacher', message: `Added teacher "${name}" (${id})`, classId: "(n/a)" });
+  ["newTeacherID", "newTeacherName", "newTeacherContact", "newTeacherSubject", "newTeacherPassword"].forEach(fld => {
+    const el = document.getElementById(fld); if (el) el.value = "";
   });
+  await loadAllData();
+}
+window.deleteTeacher = async function(id) {
+  if (confirm(`Are you sure you want to delete teacher ${id}?`)) {
+    await remove('teachers', id);
+    await addLog({ type: 'Teacher', message: `Deleted teacher ID "${id}"`, classId: "(n/a)" });
+    await loadAllData();
+  }
+}
+async function addClass() {
+  const id = document.getElementById("newClassInput").value.trim();
+  const name = document.getElementById("newClassNameInput").value.trim();
+  if (!id || !name) return alert("Please enter both Class ID and Class Name.");
+  if (classes.some(cls => cls.id === id)) return alert(`Class ID "${id}" already exists.`);
+  await save('classes', { id, name });
+  await addLog({ type: 'Class', message: `Added class "${name}" (${id})`, classId: id });
+  document.getElementById("newClassInput").value = "";
+  document.getElementById("newClassNameInput").value = "";
+  await loadAllData();
+}
+window.deleteClass = async function(id) {
+  if (confirm(`Are you sure you want to delete class ${id}?`)) {
+    await remove('classes', id);
+    await addLog({ type: 'Class', message: `Deleted class "${id}"`, classId: id });
+    await loadAllData();
+  }
+}
+async function addHoliday() {
+  const date = document.getElementById("newHolidayDate").value;
+  const reason = document.getElementById("newHolidayReason").value.trim();
+  if (!date || !reason) return alert("Please fill both date and reason.");
+  if (holidays.some(h => h.date === date)) return alert(`Holiday on "${date}" already exists.`);
+  await save('holidays', { date, reason });
+  await addLog({ type: 'Holiday', message: `Added holiday "${reason}" on ${date}`, date });
+  document.getElementById("newHolidayDate").value = "";
+  document.getElementById("newHolidayReason").value = "";
+  await loadAllData();
+}
+window.deleteHoliday = async function(date) {
+  if (confirm(`Are you sure you want to delete holiday on ${date}?`)) {
+    await remove('holidays', date);
+    await addLog({ type: 'Holiday', message: `Deleted holiday on ${date}`, date });
+    await loadAllData();
+  }
+}
 
-  // If you want to re-load dashboard after CRUD events elsewhere, call loadAllData() again!
-</script>
+// --- Attendance Table and Management ---
+function renderAttendanceTable() {
+  const attendanceClassFilter = document.getElementById('attendanceClassFilter');
+  const classId = attendanceClassFilter ? attendanceClassFilter.value : "";
+  const dateInput = document.getElementById('attendanceDateFilter');
+  const date = dateInput ? dateInput.value : "";
+  const tbody = document.getElementById('attendanceTableBody');
+  if (!tbody || !classId || !date) return;
+  const studentsInClass = students.filter(s => s.classId === classId);
+  if (!studentsInClass.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No students in this class.</td></tr>`;
+    return;
+  }
+  const attendanceForDate = attendanceRecordsAll.filter(r => r.classId === classId && r.date === date);
+  tbody.innerHTML = "";
+  studentsInClass.forEach(student => {
+    const adminRecord = attendanceForDate.find(r => r.studentId === student.id && r.markedByAdmin === true);
+    const teacherRecord = attendanceForDate.find(r => r.studentId === student.id && !r.markedByAdmin);
+    const teacherStatus = teacherRecord ? teacherRecord.status : "Not marked";
+    const adminStatus = adminRecord ? adminRecord.status : teacherStatus;
+    const isToday = (date === formatDate(new Date()));
+    const disableSelect = !isToday || !!adminRecord;
+    tbody.innerHTML += `<tr>
+      <td>${student.id}</td>
+      <td>${student.name}</td>
+      <td>
+        <select class="form-select form-select-sm attendance-status" data-studentid="${student.id}" ${disableSelect ? 'disabled' : ''}>
+          <option value="" ${adminStatus === "" ? "selected" : ""}>Select</option>
+          <option value="Present" ${adminStatus === "Present" ? "selected" : ""}>Present</option>
+          <option value="Absent" ${adminStatus === "Absent" ? "selected" : ""}>Absent</option>
+          <option value="Holiday" disabled>Holiday</option>
+        </select>
+      </td>
+    </tr>`;
+  });
+  // Enable Save button only if it's today's attendance and not admin-marked
+  const saveBtn = document.getElementById('saveAttendanceBtn');
+  saveBtn.disabled = !document.querySelector('.attendance-status:not([disabled])');
+}
 
+// --- Save Attendance --- Add event listener to Save button and implement save logic [ADD LOG!]
+document.getElementById('saveAttendanceBtn').addEventListener('click', async () => {
+  const attendanceClassFilter = document.getElementById('attendanceClassFilter');
+  const classId = attendanceClassFilter ? attendanceClassFilter.value : "";
+  const dateInput = document.getElementById('attendanceDateFilter');
+  const date = dateInput ? dateInput.value : "";
+  if (!classId || !date) return alert("Please select class and date first.");
 
+  const selects = document.querySelectorAll('.attendance-status:not(:disabled)');
+  if (!selects.length) return alert("No editable attendance records found.");
 
+  let count = 0;
+  for (const select of selects) {
+    const studentId = select.getAttribute('data-studentid');
+    const status = select.value;
+    if (!status) continue;
+    const record = {
+      classId,
+      studentId,
+      date,
+      status,
+      markedByAdmin: true
+    };
+    await save('attendance', record);
+    count++;
+  }
+  await addLog({ type: 'Attendance', message: `Admin saved attendance for class ${classId} on ${date} (${count} students)`, classId, date });
+  alert('Attendance saved successfully.');
+  attendanceRecordsAll = await getAll('attendance');
+  renderAttendanceTable();
+  renderClassAttendanceSummary(date);
+  document.getElementById('saveAttendanceBtn').disabled = true;
+});
+
+// --- Event Listeners (continued) ---
+document.getElementById("studentClassFilter")?.addEventListener("change", renderStudentTable);
+document.getElementById("attendanceClassFilter")?.addEventListener("change", renderAttendanceTable);
+document.getElementById("attendanceDateFilter")?.addEventListener("change", (e) => {
+  renderAttendanceTable();
+  const dt = e.target.value || formatDate(new Date());
+  renderClassAttendanceSummary(dt);
+});
+document.getElementById("logFilterDate")?.addEventListener("change", renderLogs);
+document.getElementById("logTypeFilter")?.addEventListener("change", renderLogs);
+document.getElementById("logClassFilter")?.addEventListener("change", renderLogs);
+
+// Load all data on DOM content loaded
+window.addEventListener('DOMContentLoaded', loadAllData);
+
+// --- Placeholder edit functions ---
+function editStudent(id) {
+  alert(`Edit student functionality for ${id} is not implemented yet.`);
+}
+function editTeacher(id) {
+  alert(`Edit teacher functionality for ${id} is not implemented yet.`);
+}
+
+  </script>
 </body>
 </html>
