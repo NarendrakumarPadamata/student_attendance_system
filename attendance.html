@@ -398,13 +398,16 @@
         }
 
         const attendanceData = [...document.querySelectorAll(".student-checkbox")].map(cb => ({
-            studentid: cb.dataset.studentid,
-            classid: classId,
-            status: cb.checked ? "Present" : "Absent",
-            markedby: teacherId,
-            markedby_name: teacherName,
-            date: today
-        }));
+        studentId: cb.dataset.studentid,
+        classId: classId,
+        status: cb.checked ? "Present" : "Absent",
+        markedByAdmin: false,
+        markedBy: teacherId,
+        markedBy_name: teacherName,
+        date: today
+    }));
+
+
 
         try {
             // Remove existing attendance for today (if any)
