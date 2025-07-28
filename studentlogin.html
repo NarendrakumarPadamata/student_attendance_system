@@ -263,11 +263,29 @@
     // Filter out attendance on holidays
     const filteredAttendance = attendanceRecords.filter(r => !holidayDates.has(r.date));
 
-    // Calculate stats excluding holidays
-    const presents = filteredAttendance.filter(r => r.status === "Present").length;
-    const absents = filteredAttendance.filter(r => r.status === "Absent").length;
+    // --- Deduplicate by date: admin preferred, else teacher ---
+    const attendanceByDate = {};
+    filteredAttendance.forEach(r => {
+        const day = r.date;
+        // Find matching record or insert; Admin has priority
+        const isAdmin = r.markedByAdmin === true;
+        if (!attendanceByDate[day]) {
+            attendanceByDate[day] = r;
+        } else if (isAdmin) {
+            // If this is an admin record, override teacher's
+            attendanceByDate[day] = r;
+        }
+        // Else do not override so admin always takes priority
+    });
+    // Convert to array: one record per day (admin preferred)
+    const deduped = Object.values(attendanceByDate);
+
+    // Now safely count!
+    const presents = deduped.filter(r => r.status === "Present").length;
+    const absents  = deduped.filter(r => r.status === "Absent").length;
     const workingDays = presents + absents;
     const overallPercent = workingDays ? ((presents / workingDays) * 100).toFixed(1) : 0;
+
 
     // Monthly stats
     const monthly = {};
@@ -316,25 +334,22 @@
     const datesSet = new Set(filteredAttendance.map(r => r.date).concat([...holidayDates]));
 
     const calendarEvents = [];
-    datesSet.forEach(date => {
+    const allDays = new Set([...Object.keys(attendanceByDate), ...holidayDates]);
+    allDays.forEach(date => {
       if (holidayDates.has(date)) {
-        // Holiday overrides attendance
         calendarEvents.push({
           title: "Holiday",
           start: date,
           allDay: true,
-          backgroundColor: "#fd7e14",  // orange color for holiday
+          backgroundColor: "#fd7e14",
           borderColor: "#fd7e14"
         });
       } else {
-        // Show attendance status normally
-        const record = filteredAttendance.find(r => r.date === date);
+        const record = attendanceByDate[date];
         if (record) {
-          let color = "";
-          if (record.status === "Present") color = "#198754"; // green
-          else if (record.status === "Absent") color = "#dc3545"; // red
-          else color = "#6c757d"; // fallback gray
-
+          let color = record.status === "Present" ? "#198754"
+                  : record.status === "Absent"  ? "#dc3545"
+                  : "#6c757d";
           calendarEvents.push({
             title: record.status,
             start: date,
@@ -345,6 +360,7 @@
         }
       }
     });
+
 
     // Render FullCalendar
     const calendar = new FullCalendar.Calendar(calendarEl, {
