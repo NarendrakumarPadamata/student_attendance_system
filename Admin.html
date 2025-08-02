@@ -331,6 +331,80 @@
     </div>
   </div>
 
+  <!-- Edit Student Modal -->
+  <div class="modal fade" id="editStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Student</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editStudentID" />
+          <div class="mb-2">
+            <label>Name</label>
+            <input type="text" id="editStudentName" class="form-control" />
+          </div>
+          <div class="mb-2">
+            <label>Class</label>
+            <select id="editStudentClass" class="form-select"></select>
+          </div>
+          <div class="mb-2">
+            <label>Contact</label>
+            <input type="text" id="editStudentContact" class="form-control" />
+          </div>
+          <div class="mb-2">
+            <label>Gender</label>
+            <select id="editStudentGender" class="form-select">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" id="saveEditStudentBtn">Save Changes</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Teacher Modal -->
+  <div class="modal fade" id="editTeacherModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Teacher</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editTeacherID" />
+          <div class="mb-2">
+            <label>Name</label>
+            <input type="text" id="editTeacherName" class="form-control" />
+          </div>
+          <div class="mb-2">
+            <label>Contact</label>
+            <input type="text" id="editTeacherContact" class="form-control" />
+          </div>
+          <div class="mb-2">
+            <label>Subject</label>
+            <input type="text" id="editTeacherSubject" class="form-control" />
+          </div>
+          <div class="mb-2">
+            <label>Password</label>
+            <input type="password" id="editTeacherPassword" class="form-control" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" id="saveEditTeacherBtn">Save Changes</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // === IndexedDB Setup and Helpers ===
@@ -569,17 +643,74 @@ function renderStudentTable() {
     return;
   }
   filteredStudents.forEach(stu => {
-    tbody.innerHTML += `<tr>
-      <td>${stu.id}</td>
-      <td>${stu.name}</td>
-      <td>${stu.classId}</td>
-      <td>${stu.contact || ""}</td>
-      <td>${stu.gender || ""}</td>
+    tbody.innerHTML += `<tr data-id="${stu.id}">
+      <td class="editable" data-field="id">${stu.id}</td>
+      <td class="editable" data-field="name">${stu.name}</td>
+      <td class="editable" data-field="classId">${stu.classId}</td>
+      <td class="editable" data-field="contact">${stu.contact || ""}</td>
+      <td class="editable" data-field="gender">${stu.gender || ""}</td>
       <td>
-        <button class="btn btn-sm btn-primary" onclick="editStudent('${stu.id}')">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteStudent('${stu.id}')">Delete</button>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-primary edit-inline">Edit</button>
+          <button class="btn btn-sm btn-success save-inline" style="display:none;">Save</button>
+          <button class="btn btn-sm btn-danger delete-inline">Delete</button>
+        </div>
       </td>
     </tr>`;
+  });
+
+  tbody.querySelectorAll('.edit-inline').forEach(btn => {
+    btn.onclick = function() {
+      const tr = btn.closest('tr');
+      tr.querySelectorAll('.editable').forEach(td => {
+        const field = td.getAttribute('data-field');
+        let value = td.textContent;
+        if (field === "id") {
+          td.innerHTML = `<input type="text" class="form-control form-control-sm" value="${value}">`;
+        } else if (field === "gender") {
+          td.innerHTML = `<select class="form-select form-select-sm">
+            <option value="Male"${value==="Male"?" selected":""}>Male</option>
+            <option value="Female"${value==="Female"?" selected":""}>Female</option>
+            <option value="Other"${value==="Other"?" selected":""}>Other</option>
+          </select>`;
+        } else if (field === "classId") {
+          td.innerHTML = `<select class="form-select form-select-sm">
+            ${classes.map(c => `<option value="${c.id}"${value===c.id?" selected":""}>${c.id}</option>`).join('')}
+          </select>`;
+        } else {
+          td.innerHTML = `<input type="text" class="form-control form-control-sm" value="${value}">`;
+        }
+      });
+      tr.querySelector('.save-inline').style.display = '';
+      btn.style.display = 'none';
+    };
+  });
+
+  tbody.querySelectorAll('.save-inline').forEach(btn => {
+    btn.onclick = async function() {
+      const tr = btn.closest('tr');
+      const oldId = tr.getAttribute('data-id');
+      const id = tr.querySelector('[data-field="id"] input')?.value || tr.querySelector('[data-field="id"]').textContent;
+      const name = tr.querySelector('[data-field="name"] input')?.value || tr.querySelector('[data-field="name"]').textContent;
+      const classId = tr.querySelector('[data-field="classId"] select')?.value || tr.querySelector('[data-field="classId"]').textContent;
+      const contact = tr.querySelector('[data-field="contact"] input')?.value || tr.querySelector('[data-field="contact"]').textContent;
+      const gender = tr.querySelector('[data-field="gender"] select')?.value || tr.querySelector('[data-field="gender"]').textContent;
+      if (![id, name, classId, contact, gender].every(Boolean)) return alert("Please fill all fields.");
+      if (id !== oldId && students.some(s => s.id === id)) return alert(`Student ID "${id}" already exists.`);
+      if (id !== oldId) await remove('students', oldId);
+      await save('students', { id, name, classId, contact, gender });
+      await addLog({ type: 'Student', message: `Edited student "${name}" (${id}) inline`, classId });
+      await loadAllData();
+    };
+  });
+
+  // Replace deleteStudent inline call with this event listener:
+  tbody.querySelectorAll('.delete-inline').forEach(btn => {
+    btn.onclick = function() {
+      const tr = btn.closest('tr');
+      const id = tr.getAttribute('data-id');
+      window.deleteStudent(id);
+    };
   });
 }
 
@@ -672,7 +803,39 @@ function populateClassDropdowns() {
 // addClass already above with log
 // addHoliday already above with log
 
-// --- Add / Delete - hook in logs ---
+// --- Confirmation Modal Helper ---
+function confirmAction(message, onConfirm) {
+  document.getElementById('confirmModalMsg').textContent = message;
+  const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+  modal.show();
+  const okBtn = document.getElementById('confirmModalOk');
+  okBtn.onclick = () => {
+    modal.hide();
+    onConfirm();
+  };
+}
+
+// --- Add / Delete / Edit Functions with Confirmation ---
+async function addClass() {
+  const id = document.getElementById("newClassInput").value.trim();
+  const name = document.getElementById("newClassNameInput").value.trim();
+  if (!id || !name) return alert("Please enter both Class ID and Class Name.");
+  if (classes.some(cls => cls.id === id)) return alert(`Class ID "${id}" already exists.`);
+  confirmAction(`Add class "${name}" (${id})?`, async () => {
+    await save('classes', { id, name });
+    await addLog({ type: 'Class', message: `Added class "${name}" (${id})`, classId: id });
+    document.getElementById("newClassInput").value = "";
+    document.getElementById("newClassNameInput").value = "";
+    await loadAllData();
+  });
+}
+window.deleteClass = async function(id) {
+  confirmAction(`Are you sure you want to delete class ${id}?`, async () => {
+    await remove('classes', id);
+    await addLog({ type: 'Class', message: `Deleted class "${id}"`, classId: id });
+    await loadAllData();
+  });
+}
 async function addStudent() {
   const id = document.getElementById("newStudentID").value.trim();
   const name = document.getElementById("newStudentName").value.trim();
@@ -682,19 +845,21 @@ async function addStudent() {
   if (![id, name, classId, contact, gender].every(Boolean)) return alert("Please fill all fields.");
   if (students.some(s => s.id === id)) return alert(`Student ID "${id}" already exists.`);
   if (!classes.some(c => c.id === classId)) return alert(`Class ID "${classId}" is invalid.`);
-  await save('students', { id, name, classId, contact, gender });
-  await addLog({ type: 'Student', message: `Added student "${name}" (${id}) in Class ${classId}`, classId });
-  ["newStudentID", "newStudentName", "newStudentClass", "newStudentContact", "newStudentGender"].forEach(idBox => {
-    const el = document.getElementById(idBox); if (el) el.value = "";
+  confirmAction(`Add student "${name}" (${id}) to class ${classId}?`, async () => {
+    await save('students', { id, name, classId, contact, gender });
+    await addLog({ type: 'Student', message: `Added student "${name}" (${id}) in Class ${classId}`, classId });
+    ["newStudentID", "newStudentName", "newStudentClass", "newStudentContact", "newStudentGender"].forEach(idBox => {
+      const el = document.getElementById(idBox); if (el) el.value = "";
+    });
+    await loadAllData();
   });
-  await loadAllData();
 }
 window.deleteStudent = async function(id) {
-  if (confirm(`Are you sure you want to delete student ${id}?`)) {
+  confirmAction(`Are you sure you want to delete student ${id}?`, async () => {
     await remove('students', id);
     await addLog({ type: 'Student', message: `Deleted student ID "${id}"`, classId: "(unknown)" });
     await loadAllData();
-  }
+  });
 }
 async function addTeacher() {
   const id = document.getElementById("newTeacherID").value.trim();
@@ -704,55 +869,41 @@ async function addTeacher() {
   const password = document.getElementById("newTeacherPassword").value.trim();
   if (![id, name, contact, subject, password].every(Boolean)) return alert("Please fill all fields.");
   if (teachers.some(t => t.id === id)) return alert(`Teacher ID "${id}" already exists.`);
-  await save('teachers', { id, name, contact, subject, password });
-  await addLog({ type: 'Teacher', message: `Added teacher "${name}" (${id})`, classId: "(n/a)" });
-  ["newTeacherID", "newTeacherName", "newTeacherContact", "newTeacherSubject", "newTeacherPassword"].forEach(fld => {
-    const el = document.getElementById(fld); if (el) el.value = "";
+  confirmAction(`Add teacher "${name}" (${id})?`, async () => {
+    await save('teachers', { id, name, contact, subject, password });
+    await addLog({ type: 'Teacher', message: `Added teacher "${name}" (${id})`, classId: "(n/a)" });
+    ["newTeacherID", "newTeacherName", "newTeacherContact", "newTeacherSubject", "newTeacherPassword"].forEach(fld => {
+      const el = document.getElementById(fld); if (el) el.value = "";
+    });
+    await loadAllData();
   });
-  await loadAllData();
 }
 window.deleteTeacher = async function(id) {
-  if (confirm(`Are you sure you want to delete teacher ${id}?`)) {
+  confirmAction(`Are you sure you want to delete teacher ${id}?`, async () => {
     await remove('teachers', id);
     await addLog({ type: 'Teacher', message: `Deleted teacher ID "${id}"`, classId: "(n/a)" });
     await loadAllData();
-  }
-}
-async function addClass() {
-  const id = document.getElementById("newClassInput").value.trim();
-  const name = document.getElementById("newClassNameInput").value.trim();
-  if (!id || !name) return alert("Please enter both Class ID and Class Name.");
-  if (classes.some(cls => cls.id === id)) return alert(`Class ID "${id}" already exists.`);
-  await save('classes', { id, name });
-  await addLog({ type: 'Class', message: `Added class "${name}" (${id})`, classId: id });
-  document.getElementById("newClassInput").value = "";
-  document.getElementById("newClassNameInput").value = "";
-  await loadAllData();
-}
-window.deleteClass = async function(id) {
-  if (confirm(`Are you sure you want to delete class ${id}?`)) {
-    await remove('classes', id);
-    await addLog({ type: 'Class', message: `Deleted class "${id}"`, classId: id });
-    await loadAllData();
-  }
+  });
 }
 async function addHoliday() {
   const date = document.getElementById("newHolidayDate").value;
   const reason = document.getElementById("newHolidayReason").value.trim();
   if (!date || !reason) return alert("Please fill both date and reason.");
   if (holidays.some(h => h.date === date)) return alert(`Holiday on "${date}" already exists.`);
-  await save('holidays', { date, reason });
-  await addLog({ type: 'Holiday', message: `Added holiday "${reason}" on ${date}`, date });
-  document.getElementById("newHolidayDate").value = "";
-  document.getElementById("newHolidayReason").value = "";
-  await loadAllData();
+  confirmAction(`Add holiday "${reason}" on ${date}?`, async () => {
+    await save('holidays', { date, reason });
+    await addLog({ type: 'Holiday', message: `Added holiday "${reason}" on ${date}`, date });
+    document.getElementById("newHolidayDate").value = "";
+    document.getElementById("newHolidayReason").value = "";
+    await loadAllData();
+  });
 }
 window.deleteHoliday = async function(date) {
-  if (confirm(`Are you sure you want to delete holiday on ${date}?`)) {
+  confirmAction(`Are you sure you want to delete holiday on ${date}?`, async () => {
     await remove('holidays', date);
     await addLog({ type: 'Holiday', message: `Deleted holiday on ${date}`, date });
     await loadAllData();
-  }
+  });
 }
 
 // --- Attendance Table and Management ---
@@ -851,6 +1002,67 @@ function editStudent(id) {
 function editTeacher(id) {
   alert(`Edit teacher functionality for ${id} is not implemented yet.`);
 }
+
+// Helper to populate class dropdown for edit student
+function populateEditStudentClassDropdown(selectedId) {
+  const select = document.getElementById("editStudentClass");
+  if (!select) return;
+  select.innerHTML = classes.map(c =>
+    `<option value="${c.id}"${c.id === selectedId ? " selected" : ""}>${c.id} - ${c.name || ""}</option>`
+  ).join('');
+}
+
+// Edit Student Functionality
+window.editStudent = function(id) {
+  const student = students.find(s => s.id === id);
+  if (!student) return alert("Student not found.");
+  document.getElementById("editStudentID").value = student.id;
+  document.getElementById("editStudentName").value = student.name;
+  document.getElementById("editStudentContact").value = student.contact || "";
+  document.getElementById("editStudentGender").value = student.gender || "Male";
+  populateEditStudentClassDropdown(student.classId);
+  const modal = new bootstrap.Modal(document.getElementById("editStudentModal"));
+  modal.show();
+};
+
+document.getElementById("saveEditStudentBtn").addEventListener("click", async function() {
+  const id = document.getElementById("editStudentID").value;
+  const name = document.getElementById("editStudentName").value.trim();
+  const classId = document.getElementById("editStudentClass").value;
+  const contact = document.getElementById("editStudentContact").value.trim();
+  const gender = document.getElementById("editStudentGender").value;
+  if (![id, name, classId, contact, gender].every(Boolean)) return alert("Please fill all fields.");
+  await save('students', { id, name, classId, contact, gender });
+  await addLog({ type: 'Student', message: `Edited student "${name}" (${id})`, classId });
+  bootstrap.Modal.getInstance(document.getElementById("editStudentModal")).hide();
+  await loadAllData();
+});
+
+// Edit Teacher Functionality
+window.editTeacher = function(id) {
+  const teacher = teachers.find(t => t.id === id);
+  if (!teacher) return alert("Teacher not found.");
+  document.getElementById("editTeacherID").value = teacher.id;
+  document.getElementById("editTeacherName").value = teacher.name;
+  document.getElementById("editTeacherContact").value = teacher.contact || "";
+  document.getElementById("editTeacherSubject").value = teacher.subject || "";
+  document.getElementById("editTeacherPassword").value = teacher.password || "";
+  const modal = new bootstrap.Modal(document.getElementById("editTeacherModal"));
+  modal.show();
+};
+
+document.getElementById("saveEditTeacherBtn").addEventListener("click", async function() {
+  const id = document.getElementById("editTeacherID").value;
+  const name = document.getElementById("editTeacherName").value.trim();
+  const contact = document.getElementById("editTeacherContact").value.trim();
+  const subject = document.getElementById("editTeacherSubject").value.trim();
+  const password = document.getElementById("editTeacherPassword").value.trim();
+  if (![id, name, contact, subject, password].every(Boolean)) return alert("Please fill all fields.");
+  await save('teachers', { id, name, contact, subject, password });
+  await addLog({ type: 'Teacher', message: `Edited teacher "${name}" (${id})`, classId: "(n/a)" });
+  bootstrap.Modal.getInstance(document.getElementById("editTeacherModal")).hide();
+  await loadAllData();
+});
 
   </script>
 </body>
