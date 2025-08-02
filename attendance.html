@@ -434,6 +434,15 @@
                 await add('attendance', record);
             }
 
+            // Add log for admin review
+            await add('logs', {
+                type: 'Attendance',
+                message: `Teacher ${teacherName} (${teacherId}) marked attendance for class ${classId} on ${today}`,
+                date: today,
+                classId: classId,
+                markedBy: teacherId
+            });
+
             alert("✅ Attendance submitted successfully!");
         } catch (error) {
             console.error('Error submitting attendance:', error);
